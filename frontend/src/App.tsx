@@ -205,15 +205,15 @@ export default function App() {
     return isResponsavelMatch && isSearchMatch && isBKOMatch;
   });
 
-  const getHeadersCSV = () => ['ID_Interno', 'Responsável', 'Franquia', 'CNPJ', 'Tributação', 'Razão Social', 'Sist. Base', 'Código Sist.', 'Data Entrada', 'Atividade', 'Bloqueada (SIM/NAO)', 'Situação Mensal', 'Fase Onboarding DP', 'Fase Onboarding Fiscal', 'Fase Onboarding Contábil', 'Procuração (SIM/NAO)', 'BKO DP (SIM/NAO)', 'BKO FISCAL (SIM/NAO)', 'BKO CTB (SIM/NAO)', 'Pró-Labores', 'Funcionários', 'Variável (SIM/NAO)', 'Adiantamento (SIM/NAO)', 'Consignado (SIM/NAO)', 'Anotações Fiscais'];
+  const getHeadersCSV = () => ['id', 'responsavel', 'franquia', 'cnpj', 'tributacao', 'nome', 'sistemaBase', 'codigoSistema', 'dataEntrada', 'atividade', 'inadimplente', 'statusCompetencia', 'faseOnbDP', 'faseOnbFiscal', 'faseOnbContabil', 'temProcuracao', 'bkoDP', 'bkoFiscal', 'bkoContabil', 'qtdProlabore', 'qtdFuncionarios', 'temVariavel', 'temAdiantamento', 'temConsignado', 'anotacoesFiscal'];
   
   const mapEmpresaToRaw = (emp: Empresa) => [
       emp.id, emp.responsavel, emp.franquia, emp.cnpj, emp.tributacao, emp.nome, 
       emp.sistemaBase, emp.codigoSistema, emp.dataEntrada, emp.atividade, 
-      emp.inadimplente?'SIM':'NÃO', emp.statusCompetencia, emp.faseOnbDP, emp.faseOnbFiscal, emp.faseOnbContabil, emp.temProcuracao?'SIM':'NÃO',
-      emp.bkoDP?'SIM':'NÃO', emp.bkoFiscal?'SIM':'NÃO', emp.bkoContabil?'SIM':'NÃO',
-      emp.qtdProlabore || '0', emp.qtdFuncionarios || '0', emp.temVariavel ? 'SIM' : 'NÃO',
-      emp.temAdiantamento ? 'SIM' : 'NÃO', emp.temConsignado ? 'SIM' : 'NÃO', emp.anotacoesFiscal || ''
+      emp.inadimplente?'true':'false', emp.statusCompetencia, emp.faseOnbDP, emp.faseOnbFiscal, emp.faseOnbContabil, emp.temProcuracao?'true':'false',
+      emp.bkoDP?'true':'false', emp.bkoFiscal?'true':'false', emp.bkoContabil?'true':'false',
+      emp.qtdProlabore || '0', emp.qtdFuncionarios || '0', emp.temVariavel ? 'true' : 'false',
+      emp.temAdiantamento ? 'true' : 'false', emp.temConsignado ? 'true' : 'false', emp.anotacoesFiscal || ''
   ];
 
   const exportToCSV = () => {
