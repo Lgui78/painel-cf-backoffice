@@ -1,0 +1,699 @@
+import { useState } from 'react';
+import type { ChangeEvent as ReactChangeEvent } from 'react';
+import { LayoutDashboard, Users, FileText, Briefcase, LogOut, Search, Plus, Download, Upload, Square, Lock, UserCircle, AlertCircle, Pencil, Check, XCircle, Globe, ShieldAlert, CalendarClock, MessageSquareText, PlaneTakeoff, ChevronLeft, Menu, Send } from 'lucide-react';
+
+// Tipos
+type Visao = 'Geral' | 'DP' | 'DP_Onb' | 'Fiscal' | 'Fiscal_Onb' | 'Contábil' | 'Contábil_Onb';
+
+interface Empresa {
+  id: string;
+  responsavel: string;
+  franquia: string;
+  cnpj: string;
+  tributacao: string;
+  nome: string;
+  sistemaBase: string; 
+  codigoSistema: string;
+  dataEntrada: string;
+  atividade: string;
+  
+  inadimplente: boolean;
+  statusCompetencia: string; 
+
+  faseOnbDP: string; 
+  faseOnbFiscal: string;
+  faseOnbContabil: string;
+  temProcuracao: boolean;
+
+  bkoDP: boolean;
+  bkoFiscal: boolean;
+  bkoContabil: boolean;
+
+  qtdProlabore?: string;
+  qtdFuncionarios?: string;
+  temVariavel?: boolean;
+  temAdiantamento?: boolean;
+  temConsignado?: boolean;
+
+  anotacoesFiscal?: string;
+  encaminhadoPara?: string; // Novo campo para rastrear a saída do BKO
+}
+
+const optionsSistemas = ['Alterdata Nuvem', 'Alterdata Servidor', 'Domínio (Base 1)', 'Domínio (Base 2)', 'Domínio (Base 3)'];
+const optionsTributacao = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real', 'Imune / Isenta'];
+const optionsAtividade = ['Serviço', 'Comércio', 'Indústria', 'Ambos'];
+
+const empresasIniciais: Empresa[] = [
+  { id: '1', responsavel: 'Cynthia', inadimplente: true, franquia: 'CF Abreu', cnpj: '52.846.590/0001-71', tributacao: 'Simples Nacional', nome: 'MARLENE CAETANO LOPES OLIVEIRA', sistemaBase: 'Alterdata Nuvem', codigoSistema: '2541', dataEntrada: '30/08/2025', atividade: 'Serviço', bkoDP: true, bkoFiscal: true, bkoContabil: false, qtdProlabore: '2', qtdFuncionarios: '15', temVariavel: false, temAdiantamento: true, temConsignado: false, anotacoesFiscal: 'Matriz e Filial unificadas SP.', statusCompetencia: 'Pendente', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
+  { id: '2', responsavel: 'Maria Cláudia', inadimplente: false, franquia: 'CF Panambi', cnpj: '36.478.163/0001-21', tributacao: 'Imune / Isenta', nome: 'ATELIE GABRIELE SCHNEIDER', sistemaBase: 'Domínio (Base 2)', codigoSistema: '1284', dataEntrada: '01/10/2023', atividade: 'Comércio', bkoDP: false, bkoFiscal: true, bkoContabil: true, anotacoesFiscal: 'ISENTA - Enviar prefeitura manual.', statusCompetencia: 'Entregue', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
+  { id: '3', responsavel: 'Matheus', inadimplente: false, franquia: 'CF A&T', cnpj: '11.615.171/0001-41', tributacao: 'Lucro Presumido', nome: 'W MACEDO ADMINISTRAM DE IMOVEIS', sistemaBase: 'Alterdata Servidor', codigoSistema: '839', dataEntrada: '15/05/2024', atividade: 'Ambos', bkoDP: true, bkoFiscal: true, bkoContabil: true, qtdProlabore: '10', qtdFuncionarios: '45', temVariavel: true, temAdiantamento: false, temConsignado: true, anotacoesFiscal: '', statusCompetencia: 'Pendente', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
+  { id: '4', responsavel: 'Equipe Onboarding', inadimplente: false, franquia: 'CF Nova Chegada', cnpj: '11.222.333/0001-44', tributacao: 'Simples Nacional', nome: 'NOVA EMPRESA EM IMPLANTAÇÃO', sistemaBase: 'Domínio (Base 1)', codigoSistema: '999', dataEntrada: '10/01/2026', atividade: 'Serviço', bkoDP: true, bkoFiscal: true, bkoContabil: false, anotacoesFiscal: '', statusCompetencia: 'Pendente', faseOnbDP: 'Falta Parametrizar', faseOnbFiscal: 'Liberado (Envio)', faseOnbContabil: 'Concluído', temProcuracao: false },
+];
+
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  
+  const [empresas, setEmpresas] = useState<Empresa[]>(empresasIniciais);
+  const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterResponsavel, setFilterResponsavel] = useState('Todos');
+  const [filtroMes, setFiltroMes] = useState('Março/2026');
+  const mesesDisponiveis = ['Janeiro/2026', 'Fevereiro/2026', 'Março/2026', 'Abril/2026', 'Maio/2026', 'Junho/2026', 'Julho/2026', 'Agosto/2026', 'Setembro/2026', 'Outubro/2026', 'Novembro/2026', 'Dezembro/2026'];
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Empresa | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const updateEmpresaDirectly = (id: string, updates: Partial<Empresa>) => {
+    setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  };
+
+  const startEditing = (emp: Empresa) => {
+    setEditingId(emp.id);
+    setEditForm({ ...emp });
+  };
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+  const saveEditing = () => {
+    if (editForm) {
+      updateEmpresaDirectly(editForm.id, editForm);
+      setEditingId(null);
+      setEditForm(null);
+    }
+  };
+
+  const despacharBko = (id: string, nomeEmpresa: string) => {
+    const nomeFuncionario = window.prompt(`Finalizar Backoffice da ${nomeEmpresa}?\n\nDigite o nome do funcionário de atendimento que assumirá esta operação:`);
+    if (nomeFuncionario && nomeFuncionario.trim() !== '') {
+      updateEmpresaDirectly(id, { encaminhadoPara: nomeFuncionario.trim() });
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if(loginEmail.trim().toLowerCase() === 'gui.contato8@gmail.com' && loginPassword === 'CFRj@123') {
+      setIsLoggedIn(true);
+      setLoginError('');
+    } else {
+      setLoginError('Credenciais incorretas.');
+    }
+  };
+
+
+  const colaboradoresSetor = Array.from(new Set(empresas.map(e => e.responsavel))).map(nome => ({
+    nome,
+    qtdEmpresas: empresas.filter(e => e.responsavel === nome).length
+  }));
+
+  const isOnbView = visaoAtiva.endsWith('_Onb');
+  const baseSector = visaoAtiva.replace('_Onb', '');
+  const hideAtividade = baseSector === 'DP' || isOnbView;
+
+  const empresasFiltradas = empresas.filter(e => {
+    const isResponsavelMatch = filterResponsavel === 'Todos' || e.responsavel === filterResponsavel;
+    const isSearchMatch = e.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          e.franquia.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          e.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          e.cnpj.includes(searchTerm);
+    
+    let isBKOMatch = true;
+    if (baseSector === 'DP') isBKOMatch = e.bkoDP === true;
+    else if (baseSector === 'Fiscal') isBKOMatch = e.bkoFiscal === true;
+    else if (baseSector === 'Contábil') isBKOMatch = e.bkoContabil === true;
+
+    return isResponsavelMatch && isSearchMatch && isBKOMatch;
+  });
+
+  const getHeadersCSV = () => ['ID_Interno', 'Responsável', 'Franquia', 'CNPJ', 'Tributação', 'Razão Social', 'Sist. Base', 'Código Sist.', 'Data Entrada', 'Atividade', 'Bloqueada (SIM/NAO)', 'Situação Mensal', 'Fase Onboarding DP', 'Fase Onboarding Fiscal', 'Fase Onboarding Contábil', 'Procuração (SIM/NAO)', 'BKO DP (SIM/NAO)', 'BKO FISCAL (SIM/NAO)', 'BKO CTB (SIM/NAO)', 'Pró-Labores', 'Funcionários', 'Variável (SIM/NAO)', 'Adiantamento (SIM/NAO)', 'Consignado (SIM/NAO)', 'Anotações Fiscais'];
+  
+  const mapEmpresaToRaw = (emp: Empresa) => [
+      emp.id, emp.responsavel, emp.franquia, emp.cnpj, emp.tributacao, emp.nome, 
+      emp.sistemaBase, emp.codigoSistema, emp.dataEntrada, emp.atividade, 
+      emp.inadimplente?'SIM':'NÃO', emp.statusCompetencia, emp.faseOnbDP, emp.faseOnbFiscal, emp.faseOnbContabil, emp.temProcuracao?'SIM':'NÃO',
+      emp.bkoDP?'SIM':'NÃO', emp.bkoFiscal?'SIM':'NÃO', emp.bkoContabil?'SIM':'NÃO',
+      emp.qtdProlabore || '0', emp.qtdFuncionarios || '0', emp.temVariavel ? 'SIM' : 'NÃO',
+      emp.temAdiantamento ? 'SIM' : 'NÃO', emp.temConsignado ? 'SIM' : 'NÃO', emp.anotacoesFiscal || ''
+  ];
+
+  const exportToCSV = () => {
+    const csvContent = [getHeadersCSV().join(';'), ...empresasFiltradas.map(emp => mapEmpresaToRaw(emp).join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `carteira_cf_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const handleFileUpload = (e: ReactChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      alert("Planilha Excel 2.0 carregada com sucesso.");
+    };
+    reader.readAsText(file);
+    e.target.value = ''; 
+  };
+
+  if (!isLoggedIn) {
+     return (
+        <div className="min-h-screen bg-[#0A0F1C] flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Ambient Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+          
+          <div className="bg-[#131B2F]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-10 w-full max-w-sm relative z-10 shadow-2xl">
+            <div className="flex justify-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shadow-lg shadow-indigo-500/30">
+                 <div className="w-full h-full bg-[#131B2F] rounded-[14px] flex items-center justify-center">
+                    <Briefcase size={28} className="text-indigo-400" />
+                 </div>
+              </div>
+            </div>
+            <h1 className="text-2xl font-black text-center mb-2 text-white tracking-tight">CF OS</h1>
+            <p className="text-center text-slate-400 text-xs font-semibold uppercase tracking-widest mb-8">Gestão Operacional de Franquias</p>
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input type="text" autoFocus required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} 
+                className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" 
+                placeholder="gui.contato8@gmail.com" />
+              <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} 
+                className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" 
+                placeholder="Senha (CFRj@123)" />
+              <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-xl font-bold tracking-wide hover:shadow-lg hover:shadow-indigo-500/25 transition-all mt-4 border border-indigo-400/20">
+                Acessar Painel Central
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+  }
+
+  const NuvemParticularidade = ({ emp }: { emp: Empresa }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    const [localValue, setLocalValue] = useState(emp.anotacoesFiscal || '');
+
+    const handleBlur = () => {
+      setIsFocused(false);
+      if (localValue !== emp.anotacoesFiscal) updateEmpresaDirectly(emp.id, { anotacoesFiscal: localValue });
+    };
+
+    if (isFocused) {
+      return (
+        <textarea 
+          autoFocus
+          className="w-full min-h-[120px] text-[12px] p-3 rounded-xl border border-indigo-300 bg-white shadow-xl shadow-indigo-900/10 font-medium text-slate-800 outline-none resize-none absolute z-50 left-0 right-0 top-0 transition-all ring-4 ring-indigo-500/10"
+          value={localValue} onChange={(e) => setLocalValue(e.target.value)} onBlur={handleBlur}
+          placeholder="Digite a particularidade. Ex: Retenção ISS SP..."
+        />
+      );
+    }
+    return (
+      <div onClick={() => setIsFocused(true)} className="text-[11px] text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-300 cursor-pointer p-3 rounded-xl truncate min-h-[42px] transition-all flex items-center gap-2 group shadow-sm">
+        <MessageSquareText size={16} className="text-slate-400 group-hover:text-indigo-500 flex-shrink-0 transition-colors" />
+        {emp.anotacoesFiscal ? <span className="font-medium text-slate-700">{emp.anotacoesFiscal}</span> : <span className="text-slate-400 italic">Clique aqui para adicionar uma anotação fiscal rápida...</span>}
+      </div>
+    );
+  };
+
+  const BkoBadge = ({ ativo, label, isEdit, onChange }: {ativo: boolean, label: string, isEdit: boolean, onChange?: (val:boolean)=>void}) => {
+    const color = label === 'DP' ? 'blue' : label === 'FIS' ? 'amber' : 'purple';
+    
+    if (isEdit) {
+      return (
+        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition w-full border border-transparent hover:border-slate-200">
+          <input type="checkbox" checked={ativo} onChange={(e)=>onChange?.(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+          <span className={`text-[11px] font-bold ${ativo ? 'text-slate-800' : 'text-slate-400'}`}>{label}</span>
+        </label>
+      );
+    }
+    
+    const activeColorMap: Record<string, string> = {
+       'DP': 'bg-blue-100 text-blue-700 border-blue-200',
+       'FIS': 'bg-amber-100 text-amber-700 border-amber-200',
+       'CTB': 'bg-purple-100 text-purple-700 border-purple-200',
+    };
+    
+    return (
+      <div title={`BKO ${label}: ${ativo ? 'Ativo' : 'Inativo'}`} className={`inline-flex items-center justify-center px-2 py-1 min-w-[38px] border text-[9px] font-bold rounded-md uppercase tracking-wider shadow-sm transition-all ${ativo ? activeColorMap[label] : 'bg-slate-50 border-slate-200 text-slate-400/70 shadow-none'}`}>
+        {ativo ? `${label} ✓` : `${label}`}
+      </div>
+    );
+  };
+
+  const renderFaseBadge = (fase: string) => {
+    const isReady = fase === 'Concluído';
+    const isMiddle = fase === 'Liberado (Envio)';
+    return (
+      <span className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase whitespace-nowrap shadow-sm border ${isReady ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isMiddle ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+        {fase || 'Falta Parametrizar'}
+      </span>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex font-inter text-slate-800">
+      
+      {/* GLOBAL CSS FOR SCROLLBAR */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; border: 2px solid #F8FAFC; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}</style>
+
+      {/* Modern Premium Sidebar (Dual/Rail Accordion format - COLLAPSIBLE) */}
+      <aside className={`flex h-screen fixed shadow-2xl z-40 transition-all duration-300 ${isSidebarOpen ? 'w-[300px]' : 'w-[70px]'}`}>
+        
+        {/* LEFT RAIL (Slim Icon Sidebar) */}
+        <div className="w-[70px] bg-[#0A101D] border-r border-[#192435] flex flex-col items-center py-6 gap-6 shrink-0 h-full relative z-50">
+           {/* Logo Sphere */}
+           <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[1px] shadow-lg shadow-cyan-500/20 mb-2 cursor-pointer transition-transform hover:scale-105 active:scale-95 flex items-center justify-center">
+              <div className="w-full h-full bg-[#0A101D] rounded-full flex items-center justify-center">
+                 {isSidebarOpen ? <ChevronLeft size={18} className="text-white" /> : <Menu size={18} className="text-white" />}
+              </div>
+           </div>
+
+           {/* Icon Buttons matching the screenshot */}
+           <div className="flex flex-col gap-3 w-full px-2 mt-4 space-y-2">
+              <button title="Universo 360" onClick={() => { setVisaoAtiva('Geral'); setIsSidebarOpen(true); }} className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center transition-all ${visaoAtiva === 'Geral' ? 'bg-[#0bc5ea] text-white shadow-[0_0_15px_rgba(11,197,234,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                 <Globe size={22} strokeWidth={1.5}/>
+              </button>
+              
+              <button title="Módulo DP" onClick={() => { setVisaoAtiva('DP'); setIsSidebarOpen(true); }} className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center transition-all ${baseSector === 'DP' ? 'bg-[#0bc5ea] text-white shadow-[0_0_15px_rgba(11,197,234,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                 <Users size={22} strokeWidth={1.5}/>
+              </button>
+
+              <button title="Módulo Fiscal" onClick={() => { setVisaoAtiva('Fiscal'); setIsSidebarOpen(true); }} className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center transition-all ${baseSector === 'Fiscal' ? 'bg-[#0bc5ea] text-white shadow-[0_0_15px_rgba(11,197,234,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                 <FileText size={22} strokeWidth={1.5}/>
+              </button>
+
+              <button title="Módulo Contábil" onClick={() => { setVisaoAtiva('Contábil'); setIsSidebarOpen(true); }} className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center transition-all ${baseSector === 'Contábil' ? 'bg-[#0bc5ea] text-white shadow-[0_0_15px_rgba(11,197,234,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                 <LayoutDashboard size={22} strokeWidth={1.5}/>
+              </button>
+           </div>
+           
+           <div className="mt-auto pb-4">
+              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-bold text-xs border border-slate-700 shadow-md">
+                {loginEmail.substring(0,2)}
+              </div>
+           </div>
+        </div>
+
+        {/* RIGHT PANEL (Sub-Menu Accordions) -> Collapses when isSidebarOpen is false */}
+        <div className={`flex-1 border-r border-[#192435] flex flex-col h-full bg-[#040812] transition-all duration-300 overflow-hidden ${isSidebarOpen ? 'w-[230px] opacity-100' : 'w-0 opacity-0 pointer-events-none border-none'}`}>
+           {/* Header */}
+           <div className="p-5 border-b border-white/5 flex justify-between items-center h-[88px] shrink-0 min-w-[230px]">
+             <span className="text-white font-black text-[15px] tracking-widest">BACK<span className="text-[#0bc5ea]">OFFICE</span></span>
+             <span className="text-slate-500 text-[10px] uppercase font-bold tracking-widest shrink-0">Dashboard</span>
+           </div>
+
+           {/* Accordion Lists */}
+           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1 min-w-[200px]">
+              <div className="mb-3">
+                 <button 
+                    onClick={() => { setVisaoAtiva('Geral'); cancelEditing(); }} 
+                    className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-[13px] font-semibold transition-all ${visaoAtiva === 'Geral' ? 'text-white bg-[#101b30]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}
+                 >
+                    <div className="flex items-center gap-3">
+                       <Globe size={16} className={visaoAtiva === 'Geral' ? 'text-[#0bc5ea]' : ''}/>
+                       Visão Geral 360
+                    </div>
+                 </button>
+              </div>
+
+              {['DP', 'Fiscal', 'Contábil'].map(setor => {
+                const isExpanded = baseSector === setor || visaoAtiva === 'Geral'; // Expand if active
+                const iconMap: Record<string, any> = { 'DP': Users, 'Fiscal': FileText, 'Contábil': LayoutDashboard };
+                const Icon = iconMap[setor];
+
+                return (
+                  <div key={setor} className="mb-1">
+                     {/* Accordion Header (Click to expand via setting active view to trigger showing its children) */}
+                     <button 
+                        onClick={() => {
+                          setVisaoAtiva(setor as Visao); 
+                          cancelEditing();
+                        }} 
+                        className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-[13px] font-semibold transition-all ${(baseSector === setor && visaoAtiva !== 'Geral') ? 'text-white bg-[#101b30]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}
+                     >
+                        <div className="flex items-center gap-3">
+                           <Icon size={16} className={(baseSector === setor && visaoAtiva !== 'Geral') ? 'text-[#0bc5ea]' : ''}/>
+                           Módulo {setor}
+                        </div>
+                        <span className="text-[10px] text-slate-500">{isExpanded ? 'v' : '^'}</span>
+                     </button>
+
+                     {/* Accordion Children (Só aparece quando clicar / estiver ativo) */}
+                     {isExpanded && (
+                       <div className="pl-9 mt-1 space-y-1 pb-2">
+                          <button onClick={() => {setVisaoAtiva(setor as Visao); cancelEditing();}} className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all ${visaoAtiva === setor ? 'text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}>
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${visaoAtiva === setor ? 'border-[#0bc5ea] bg-[#0bc5ea]/10 text-[#0bc5ea]' : 'border-slate-700 bg-transparent'}`}><Check size={10} className={visaoAtiva === setor ? 'opacity-100' : 'opacity-0'}/></div>
+                            Entregas Mensais
+                          </button>
+
+                          <button onClick={() => {setVisaoAtiva(`${setor}_Onb` as Visao); cancelEditing();}} className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all ${visaoAtiva === `${setor}_Onb` ? 'text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}>
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${visaoAtiva === `${setor}_Onb` ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-slate-700 bg-transparent'}`}><PlaneTakeoff size={10} className={visaoAtiva === `${setor}_Onb` ? 'opacity-100' : 'opacity-0'}/></div>
+                            Onboarding
+                          </button>
+                       </div>
+                     )}
+                  </div>
+                )
+              })}
+           </div>
+
+           <div className="p-4 border-t border-white/5 bg-[#0A101D] min-w-[230px]">
+              <button onClick={() => { setIsLoggedIn(false); setLoginPassword(''); }} className="flex w-full items-center justify-center gap-2 text-slate-500 hover:text-rose-400 px-3 py-2 text-[11px] font-bold uppercase transition-all">
+                <LogOut size={14} /> Sair do Sistema
+              </button>
+           </div>
+        </div>
+      </aside>
+
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[70px]'} p-8 max-w-full relative flex flex-col h-screen overflow-hidden bg-[#F8FAFC]`}>
+        <header className="flex justify-between items-end mb-8 shrink-0">
+          <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm border ${isOnbView ? 'bg-amber-50 text-amber-600 border-amber-200' : visaoAtiva === 'Geral' ? 'bg-cyan-50 text-cyan-600 border-cyan-200' : 'bg-white text-[#0A0F1C] border-slate-200'}`}>
+                 {isOnbView ? <PlaneTakeoff size={24}/> : visaoAtiva === 'Geral' ? <Globe size={24}/> : baseSector === 'DP' ? <Users size={24}/> : baseSector === 'Fiscal' ? <FileText size={24}/> : <LayoutDashboard size={24}/>}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-[#0A0F1C] tracking-tight">
+                  Painel <span className={`${isOnbView ? 'text-amber-500' : visaoAtiva === 'Geral' ? 'text-cyan-500' : 'text-indigo-600'} font-black`}>{visaoAtiva.replace('_Onb', ' Onboarding')}</span>
+                </h2>
+                <p className="text-slate-500 font-medium text-[13px] mt-1">Monitoramento operacional em tempo real.</p>
+              </div>
+          </div>
+          <div className="flex gap-3">
+            <label className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-2">
+              <Upload size={14} className="text-slate-400" /> Importar CSV
+              <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+            </label>
+             <button onClick={exportToCSV} className="bg-[#0A0F1C] hover:bg-[#1e293b] text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition-all flex items-center gap-2 border border-[#0A0F1C]">
+               <Download size={14} /> Exportar
+             </button>
+          </div>
+        </header>
+
+        {/* The Glass Table Container */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-100 overflow-hidden flex flex-col flex-1 relative">
+          
+          {/* Toolbar */}
+          <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3 w-full max-w-3xl">
+                <div className="relative flex-[2]">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input 
+                    type="text" placeholder="Buscar por Nome, CNPJ ou Analista..."
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="w-px h-6 bg-slate-200"></div>
+
+                <select className="bg-slate-50 border text-indigo-700 font-bold border-slate-200 shadow-sm rounded-lg text-[12px] py-2 px-3 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer flex-1 transition-colors hover:bg-slate-100" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)}>
+                   {mesesDisponiveis.map(m => <option key={m} value={m}>Mês: {m}</option>)}
+                </select>
+
+                <select className="bg-white border text-slate-600 font-semibold border-slate-200 shadow-sm rounded-lg text-[12px] py-2 px-3 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer flex-1 transition-colors hover:bg-slate-50" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
+                   <option value="Todos">Todos Analistas</option>
+                   {colaboradoresSetor.map(c => <option key={c.nome} value={c.nome}>{c.nome}</option>)}
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                 <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 font-bold text-[10px] uppercase tracking-wider flex items-center gap-2 shadow-sm">
+                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
+                   {empresasFiltradas.length} Operações Ativas
+                 </div>
+              </div>
+          </div>
+
+          <div className="overflow-x-auto overflow-y-auto flex-1 h-full custom-scrollbar relative">
+            <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
+              <thead className="sticky top-0 z-30 bg-[#F8FAFC]">
+                <tr className="text-[#64748B] text-[10px] font-bold uppercase tracking-widest border-b border-slate-200">
+                  <th className="px-5 py-3.5 w-12 text-center text-slate-300"><Square size={14}/></th>
+                  <th className="px-5 py-3.5 w-12 text-center">Ação</th>
+                  
+                  {!isOnbView ? (
+                    <th className="px-5 py-3.5 border-r border-slate-200/60 bg-slate-50/50 text-center text-slate-500">Obrigação Mensal</th>
+                  ) : (
+                    <th className="px-5 py-3.5 border-r border-amber-50/60 bg-amber-50/30 text-center text-amber-600">Trilha Onboarding</th>
+                  )}
+
+                  <th className="px-5 py-3.5 text-slate-500">Franquia</th>
+                  <th className="px-5 py-3.5">Razão Social</th>
+                  <th className="px-5 py-3.5">CNPJ</th>
+                  <th className="px-5 py-3.5 text-center">Tributação</th>
+                  {!hideAtividade && <th className="px-5 py-3.5">Atividade</th>}
+                  <th className="px-5 py-3.5">Entrada</th>
+                  
+                  {baseSector === 'DP' && !isOnbView && (
+                    <th className="px-6 py-3.5 border-l border-slate-200/60 bg-slate-50/50 text-slate-500 text-center relative z-20">Engrenagem DP</th>
+                  )}
+
+                  {baseSector === 'Fiscal' && !isOnbView && (
+                    <th className="px-6 py-3.5 border-l border-slate-200/60 bg-slate-50/50 text-slate-500 relative z-20 min-w-[280px]">Particularidades</th>
+                  )}
+
+                  <th className="px-5 py-3.5">Analista</th>
+                  <th className="px-5 py-3.5">Sist Base</th>
+                  <th className="px-5 py-3.5">Cód.</th>
+                  <th className="px-5 py-3.5 text-center">Mix Módulos</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-[13px] font-medium text-slate-700 bg-white">
+                {empresasFiltradas.length > 0 ? empresasFiltradas.map((emp) => {
+                  const isEditing = editingId === emp.id;
+                  
+                  return (
+                  <tr key={emp.id} className={`group hover:bg-slate-50/80 transition-all duration-200 ${isEditing ? 'bg-indigo-50/20 shadow-sm relative z-10' : ''}`}>
+                    <td className="px-5 py-3.5 text-center"><input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-[#0A0F1C] focus:ring-[#0A0F1C] cursor-pointer"/></td>
+                    <td className="px-5 py-3.5 text-center">
+                      {isEditing ? (
+                        <div className="flex gap-2 justify-center">
+                          <button onClick={saveEditing} className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm hover:bg-emerald-600 transition-colors"><Check size={14} /></button>
+                          <button onClick={cancelEditing} className="p-1.5 bg-rose-500 text-white rounded-lg shadow-sm hover:bg-rose-600 transition-colors"><XCircle size={14} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1 justify-center">
+                          <button onClick={() => startEditing(emp)} disabled={!!editingId} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent">
+                            <Pencil size={15} />
+                          </button>
+                          {!emp.encaminhadoPara && (
+                            <button onClick={() => despacharBko(emp.id, emp.nome)} disabled={!!editingId} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent" title="Finalizar e Despachar ao Atendimento">
+                              <Send size={15} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* STATUS DE ENTREGA MENSAL */}
+                    {!isOnbView ? (
+                       <td className="px-5 py-3.5 border-r border-slate-100 text-center bg-slate-50/30 group-hover:bg-transparent transition-colors">
+                         {isEditing ? (
+                           <select className="p-1.5 border border-indigo-300 rounded-md font-bold w-[110px] text-[11px] shadow-sm text-indigo-900 bg-white" value={editForm?.statusCompetencia||'Pendente'} onChange={e=>setEditForm({...editForm!, statusCompetencia: e.target.value})}>
+                              <option>Pendente</option><option>Entregue</option>
+                           </select>
+                         ) : (
+                           <button onClick={() => updateEmpresaDirectly(emp.id, {statusCompetencia: emp.statusCompetencia === 'Entregue' ? 'Pendente' : 'Entregue'})} className={`px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all mx-auto ${emp.statusCompetencia === 'Entregue' ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 ring-1 ring-rose-500/20 hover:bg-rose-100'}`}>
+                             {emp.statusCompetencia === 'Entregue' ? <Check size={12}/> : <CalendarClock size={12}/>}
+                             {emp.statusCompetencia || 'Pendente'}
+                           </button>
+                         )}
+                       </td>
+                    ) : (
+                       <td className="px-5 py-4 border-r border-amber-100 bg-amber-50/20 text-center">
+                         {isEditing ? (
+                           <select className="p-1.5 text-[10px] border border-amber-300 rounded font-bold text-amber-900 w-[130px] shadow-sm bg-white" 
+                              value={baseSector === 'DP' ? editForm?.faseOnbDP : baseSector === 'Fiscal' ? editForm?.faseOnbFiscal : editForm?.faseOnbContabil} 
+                              onChange={e=> {
+                                if(baseSector === 'DP') setEditForm({...editForm!, faseOnbDP: e.target.value});
+                                if(baseSector === 'Fiscal') setEditForm({...editForm!, faseOnbFiscal: e.target.value});
+                                if(baseSector === 'Contábil') setEditForm({...editForm!, faseOnbContabil: e.target.value});
+                              }}
+                           >
+                              <option>Falta Parametrizar</option><option>Liberado (Envio)</option><option>Concluído</option>
+                           </select>
+                         ) : (
+                            renderFaseBadge(baseSector === 'DP' ? emp.faseOnbDP : baseSector === 'Fiscal' ? emp.faseOnbFiscal : emp.faseOnbContabil)
+                         )}
+                       </td>
+                    )}
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                         <input type="text" className="border border-indigo-300 rounded-md p-2 w-[140px] text-[11px] font-bold shadow-sm focus:ring-2 focus:ring-indigo-500" value={editForm?.franquia} onChange={e => setEditForm({...editForm!, franquia: e.target.value})} />
+                      ) : (
+                         <div className="flex flex-col items-start gap-1">
+                            <span className="font-bold text-[13px] text-slate-800">{emp.franquia}</span>
+                            {emp.inadimplente && <span className="bg-rose-50 text-rose-600 ring-1 ring-rose-500/20 text-[8px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-widest flex items-center gap-1"><ShieldAlert size={10}/> BLOQUEADO</span>}
+                         </div>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                          <input type="text" className="border border-indigo-300 rounded-md p-2 w-[220px] text-[11px] font-bold text-slate-800 shadow-sm focus:ring-2 focus:ring-indigo-500" value={editForm?.nome} onChange={e => setEditForm({...editForm!, nome: e.target.value})} />
+                      ) : (
+                          <div className="flex flex-col gap-1 items-start">
+                             <div className="text-[12.5px] font-semibold text-slate-700 whitespace-nowrap">{emp.nome}</div>
+                             {emp.encaminhadoPara && (
+                               <div className="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wide flex items-center gap-1 w-max">
+                                 <Send size={9}/> {emp.encaminhadoPara}
+                               </div>
+                             )}
+                          </div>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                          <input type="text" className="border border-indigo-300 rounded-md p-2 w-[110px] text-[11px] font-mono shadow-sm focus:ring-2 focus:ring-indigo-500" value={editForm?.cnpj} onChange={e => setEditForm({...editForm!, cnpj: e.target.value})} />
+                      ) : (
+                          <div className="text-[11.5px] font-mono text-slate-500">{emp.cnpj}</div>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5 text-center">
+                      {isEditing ? (
+                        <select className="border border-indigo-300 bg-white text-indigo-900 rounded-md p-2 w-[120px] text-[10px] font-bold shadow-sm" value={editForm?.tributacao} onChange={e => setEditForm({...editForm!, tributacao: e.target.value})}>
+                          {optionsTributacao.map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      ) : (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wide ${emp.tributacao === 'Imune / Isenta' ? 'bg-sky-50 text-sky-600 ring-1 ring-sky-500/20' : 'bg-slate-100/80 text-slate-600 ring-1 ring-slate-200/60'}`}>{emp.tributacao}</span>
+                      )}
+                    </td>
+
+                    {!hideAtividade && (
+                      <td className="px-5 py-3.5">
+                        {isEditing ? (
+                          <select className="border border-indigo-300 rounded-md p-2 text-[10px] font-bold w-[90px] shadow-sm bg-white" value={editForm?.atividade} onChange={e => setEditForm({...editForm!, atividade: e.target.value})}>
+                            {optionsAtividade.map(t => <option key={t}>{t}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-[11.5px] font-semibold text-slate-600 px-2 py-0.5 bg-slate-50 rounded-md border border-slate-200/60">{emp.atividade}</span>
+                        )}
+                      </td>
+                    )}
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                         <input type="text" className="border border-indigo-300 rounded-md p-2 w-[80px] text-[10px] font-bold shadow-sm focus:ring-2 focus:ring-indigo-500" value={editForm?.dataEntrada} onChange={e => setEditForm({...editForm!, dataEntrada: e.target.value})} />
+                      ) : (
+                         <div className="text-[11.5px] font-medium text-slate-500">{emp.dataEntrada}</div>
+                      )}
+                    </td>
+
+                    {/* =========== BISTURI DP =========== */}
+                    {baseSector === 'DP' && !isOnbView && (
+                      <td className="px-5 py-4 border-l border-slate-100 bg-slate-50/30 group-hover:bg-transparent transition-colors">
+                        {isEditing ? (
+                           <div className="text-[10px] text-indigo-600 font-bold bg-indigo-50 border border-indigo-100 rounded-lg p-3 shadow-inner">
+                              <span className="uppercase tracking-wider">Ajuste de Folha:</span> <br/>
+                              <div className="flex gap-2 mt-2">
+                                <label>Pról: <input type="number" className="w-[50px] border border-indigo-200 rounded p-1" value={editForm?.qtdProlabore} onChange={e=>setEditForm({...editForm!, qtdProlabore: e.target.value})}/></label>
+                                <label>Func: <input type="number" className="w-[50px] border border-indigo-200 rounded p-1" value={editForm?.qtdFuncionarios} onChange={e=>setEditForm({...editForm!, qtdFuncionarios: e.target.value})}/></label>
+                              </div>
+                           </div>
+                        ) : (
+                          <div className="flex gap-3 items-center">
+                               <div className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-center shadow-sm min-w-[40px]">
+                                 <div className="text-[8px] text-slate-400 uppercase font-black tracking-widest">Pró-L</div>
+                                 <div className="text-[12px] font-black text-slate-700">{emp.qtdProlabore || '0'}</div>
+                               </div>
+                               <div className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-center shadow-sm min-w-[40px]">
+                                 <div className="text-[8px] text-slate-400 uppercase font-black tracking-widest">Func</div>
+                                 <div className="text-[12px] font-black text-slate-700">{emp.qtdFuncionarios || '0'}</div>
+                               </div>
+
+                               <div className="flex flex-col gap-1 ml-1">
+                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${emp.temAdiantamento ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-transparent text-slate-400 border-transparent opacity-60'}`}>Adiantamento</span>
+                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${emp.temConsignado ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-transparent text-slate-400 border-transparent opacity-60'}`}>Consignado</span>
+                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${emp.temVariavel ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-transparent text-slate-400 border-transparent opacity-60'}`}>Variável</span>
+                               </div>
+                          </div>
+                        )}
+                      </td>
+                    )}
+
+                    {/* =========== BISTURI FISCAL =========== */}
+                    {baseSector === 'Fiscal' && !isOnbView && (
+                      <td className="px-5 py-4 border-l border-slate-100 bg-slate-50/30 align-top group-hover:bg-transparent transition-colors">
+                        {isEditing ? (
+                          <div className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 shadow-inner rounded-xl px-3 py-2 italic flex items-center gap-2 max-w-[280px]">
+                             <AlertCircle size={14}/> Salve a linha para editar anotações livrement na tabela!
+                          </div>
+                        ) : (
+                          <div className="relative min-w-[280px]">
+                            <NuvemParticularidade emp={emp} />
+                          </div>
+                        )}
+                      </td>
+                    )}
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                        <input type="text" className="border border-indigo-300 rounded-md p-2 w-[100px] text-[10px] font-bold shadow-sm" value={editForm?.responsavel} onChange={e => setEditForm({...editForm!, responsavel: e.target.value})} />
+                      ) : (
+                        <span className="font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] shadow-sm truncate block max-w-max">{emp.responsavel}</span>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                        <select className="border border-indigo-300 bg-white text-indigo-900 rounded-md p-2 w-[110px] text-[10px] font-bold shadow-sm" value={editForm?.sistemaBase} onChange={e => setEditForm({...editForm!, sistemaBase: e.target.value})}>
+                          {optionsSistemas.map(opt => <option key={opt}>{opt}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-[11.5px] font-medium text-slate-600 block">{emp.sistemaBase}</span>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                         <input type="text" className="border border-indigo-300 rounded-md p-2 w-[60px] text-[10px] font-mono shadow-sm" value={editForm?.codigoSistema} onChange={e => setEditForm({...editForm!, codigoSistema: e.target.value})} />
+                      ) : (
+                         <div className="text-[11.5px] font-mono text-slate-500">{emp.codigoSistema}</div>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-3.5">
+                      {isEditing ? (
+                        <div className="text-[10px] text-indigo-500 font-bold bg-indigo-50 p-2 rounded-lg border border-indigo-100 flex items-center justify-center">Protegido (Edite In-Line)</div>
+                      ) : (
+                        <div className="flex gap-1.5 justify-center">
+                          <BkoBadge isEdit={false} ativo={emp.bkoDP} label="DP" />
+                          <BkoBadge isEdit={false} ativo={emp.bkoFiscal} label="FIS" />
+                          <BkoBadge isEdit={false} ativo={emp.bkoContabil} label="CTB" />
+                        </div>
+                      )}
+                    </td>
+
+                  </tr>
+                )}) : (
+                  <tr>
+                    <td colSpan={100} className="px-6 py-32 text-center">
+                      <div className="flex flex-col items-center justify-center opacity-40">
+                         <div className="w-16 h-16 bg-slate-200 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                            <Search className="h-8 w-8 text-slate-400" />
+                         </div>
+                         <p className="text-lg font-bold text-slate-500">Nenhuma matriz listada.</p>
+                         <p className="text-sm mt-1 text-slate-400 font-medium">Os radares não detectaram informações correspondentes aos filtros.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
