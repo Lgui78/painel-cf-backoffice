@@ -335,8 +335,12 @@ export default function App() {
                if (matchedOpt) {
                    empresa.statusCompetencia = matchedOpt;
                    empresa.faseOnbDP = matchedOpt; // Espelha automático!
+                   empresa.faseOnbFiscal = matchedOpt; 
+                   empresa.faseOnbContabil = matchedOpt; 
                } else {
                    empresa.faseOnbDP = empresa.statusCompetencia; // Espelha o texto torto mesmo se não achar
+                   empresa.faseOnbFiscal = empresa.statusCompetencia;
+                   empresa.faseOnbContabil = empresa.statusCompetencia;
                }
             }
 
@@ -748,7 +752,7 @@ export default function App() {
                        <td className="px-5 py-4 border-r border-amber-500/10 bg-amber-500/5 text-center">
                           <InlineBadgeSelect 
                             val={baseSector === 'DP' ? emp.faseOnbDP : baseSector === 'Fiscal' ? emp.faseOnbFiscal : emp.faseOnbContabil}
-                            options={baseSector === 'DP' ? optionsFaseDP : optionsOnbGeral}
+                            options={optionsFaseDP} // USA A MESMA LISTA COLORIDA PARA TODOS OS ONBOARDINGS!
                             onChange={(v) => {
                                if(baseSector === 'DP') updateEmpresaDirectly(emp.id, {faseOnbDP: v});
                                if(baseSector === 'Fiscal') updateEmpresaDirectly(emp.id, {faseOnbFiscal: v});
