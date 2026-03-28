@@ -414,15 +414,57 @@ export default function App() {
     );
   };
 
-  const renderFaseBadge = (fase: string) => {
-    const isReady = fase === 'Concluído';
-    const isMiddle = fase === 'Liberado (Envio)';
-    return (
-      <span className={`px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase whitespace-nowrap shadow-sm border ${isReady ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : isMiddle ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-        {fase || 'Falta Parametrizar'}
-      </span>
-    );
-  }
+  const optionsFaseDP = [
+    'Falta Parametrizar',
+    '100% concluído',
+    'Folha enviada/variável',
+    'Folha enviada aguardando conferência do franqueado',
+    'Aguardando/variáveis',
+    'Certificado com 2 etapas',
+    'Liberado pra envio',
+    'Sem certificado',
+    'Certificado vencido',
+    'Sem procuração',
+    'Aguardando T.I'
+  ];
+
+  const optionsOnbGeral = ['Falta Parametrizar', 'Em Andamento', 'Concluído'];
+  const optionsMesGeral = ['Pendente', 'Entregue'];
+
+  const getStatusColor = (fase: string) => {
+    switch (fase) {
+      case '100% concluído': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Entregue': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Concluído': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Folha enviada/variável': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'Folha enviada aguardando conferência do franqueado': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      case 'Aguardando/variáveis': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'Em Andamento': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'Certificado com 2 etapas': return 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20';
+      case 'Liberado pra envio': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      case 'Sem certificado': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'Certificado vencido': return 'bg-rose-600/10 text-rose-500 border-rose-600/20';
+      case 'Sem procuração': return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
+      case 'Pendente': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'Aguardando T.I': return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+      case 'Falta Parametrizar': 
+      default:
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+    }
+  };
+
+  const InlineBadgeSelect = ({ val, options, onChange, disabled }: { val: string, options: string[], onChange: (v: string) => void, disabled?: boolean }) => (
+     <select 
+       value={val} 
+       onChange={(e) => onChange(e.target.value)}
+       disabled={disabled}
+       className={`appearance-none cursor-pointer outline-none text-center px-2 py-1.5 rounded-md text-[9.5px] font-black uppercase tracking-wider shadow-sm border transition-all truncate max-w-[170px] ${getStatusColor(val)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+       style={{ textAlignLast: 'center' }}
+       title={val}
+     >
+        {options.map((o, idx) => <option key={idx} value={o} className="bg-[#0A101D] text-slate-300 font-bold uppercase">{o}</option>)}
+     </select>
+  );
 
   return (
     <div className="min-h-screen bg-[#040812] flex font-inter text-slate-200">
@@ -668,34 +710,26 @@ export default function App() {
 
                     {/* STATUS DE ENTREGA MENSAL */}
                     {!isOnbView ? (
-                       <td className="px-5 py-3.5 border-r border-white/5 text-center bg-[#131B2F]/30 group-hover:bg-transparent transition-colors">
-                         {isEditing ? (
-                           <select className="p-1.5 border border-white/10 rounded-md font-bold w-[110px] text-[11px] shadow-sm text-indigo-300 bg-[#131B2F]" value={editForm?.statusCompetencia||'Pendente'} onChange={e=>setEditForm({...editForm!, statusCompetencia: e.target.value})}>
-                              <option>Pendente</option><option>Entregue</option>
-                           </select>
-                         ) : (
-                           <button onClick={() => updateEmpresaDirectly(emp.id, {statusCompetencia: emp.statusCompetencia === 'Entregue' ? 'Pendente' : 'Entregue'})} className={`px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all mx-auto ${emp.statusCompetencia === 'Entregue' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20 hover:bg-rose-500/20'}`}>
-                             {emp.statusCompetencia === 'Entregue' ? <Check size={12}/> : <CalendarClock size={12}/>}
-                             {emp.statusCompetencia || 'Pendente'}
-                           </button>
-                         )}
+                       <td className="px-5 py-3.5 border-r border-white/5 text-center bg-[#131B2F]/30 transition-colors">
+                          <InlineBadgeSelect 
+                            val={emp.statusCompetencia || 'Pendente'}
+                            options={baseSector === 'DP' ? optionsFaseDP : optionsMesGeral}
+                            onChange={(v) => updateEmpresaDirectly(emp.id, {statusCompetencia: v})}
+                            disabled={!!editingId && !isEditing}
+                          />
                        </td>
                     ) : (
-                       <td className="px-5 py-4 border-r border-amber-100 bg-amber-50/20 text-center">
-                         {isEditing ? (
-                           <select className="p-1.5 text-[10px] border border-amber-300 rounded font-bold text-amber-900 w-[130px] shadow-sm bg-white" 
-                              value={baseSector === 'DP' ? editForm?.faseOnbDP : baseSector === 'Fiscal' ? editForm?.faseOnbFiscal : editForm?.faseOnbContabil} 
-                              onChange={e=> {
-                                if(baseSector === 'DP') setEditForm({...editForm!, faseOnbDP: e.target.value});
-                                if(baseSector === 'Fiscal') setEditForm({...editForm!, faseOnbFiscal: e.target.value});
-                                if(baseSector === 'Contábil') setEditForm({...editForm!, faseOnbContabil: e.target.value});
-                              }}
-                           >
-                              <option>Falta Parametrizar</option><option>Liberado (Envio)</option><option>Concluído</option>
-                           </select>
-                         ) : (
-                            renderFaseBadge(baseSector === 'DP' ? emp.faseOnbDP : baseSector === 'Fiscal' ? emp.faseOnbFiscal : emp.faseOnbContabil)
-                         )}
+                       <td className="px-5 py-4 border-r border-amber-500/10 bg-amber-500/5 text-center">
+                          <InlineBadgeSelect 
+                            val={baseSector === 'DP' ? emp.faseOnbDP : baseSector === 'Fiscal' ? emp.faseOnbFiscal : emp.faseOnbContabil}
+                            options={baseSector === 'DP' ? optionsFaseDP : optionsOnbGeral}
+                            onChange={(v) => {
+                               if(baseSector === 'DP') updateEmpresaDirectly(emp.id, {faseOnbDP: v});
+                               if(baseSector === 'Fiscal') updateEmpresaDirectly(emp.id, {faseOnbFiscal: v});
+                               if(baseSector === 'Contábil') updateEmpresaDirectly(emp.id, {faseOnbContabil: v});
+                            }}
+                            disabled={!!editingId && !isEditing}
+                          />
                        </td>
                     )}
 
