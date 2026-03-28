@@ -266,8 +266,21 @@ export default function App() {
       'PROCURACAO': 'temProcuracao',
       'RESPONSAVEL': 'responsavel',    
       'BLOQUEADA': 'inadimplente',
-      'INADIMPLENTE': 'inadimplente'
+      'INADIMPLENTE': 'inadimplente',
+      'STATUS': 'statusCompetencia',
+      'SITUACAO': 'statusCompetencia',
+      'FASE': 'statusCompetencia',
+      '_*': 'statusCompetencia', // Aquele cabeçalho estranho
+      '': 'statusCompetencia' // Coluna vazia
     };
+
+    // Opções corretas para bater o texto vindo do Excel:
+    const exactDPOptions = [
+      'Falta Parametrizar', '100% concluído', 'Folha enviada/variável',
+      'Folha enviada aguardando conferência do franqueado', 'Aguardando/variáveis',
+      'Certificado com 2 etapas', 'Liberado pra envio', 'Sem certificado',
+      'Certificado vencido', 'Sem procuração', 'Aguardando T.I'
+    ];
 
     Papa.parse(file, {
       header: true,
@@ -314,6 +327,19 @@ export default function App() {
                }
             }
             if(!empresa.nome) empresa.nome = 'Empresa Desconhecida (Ver Excel)';
+
+            // Tenta forçar o match perfeito da string de STATUS que veio limpa (ex: '100% CONCLUIDO') com a lista bonita
+            if (empresa.statusCompetencia && empresa.statusCompetencia !== 'Pendente') {
+               const normIncoming = normalizeText(empresa.statusCompetencia);
+               const matchedOpt = exactDPOptions.find(opt => normalizeText(opt) === normIncoming);
+               if (matchedOpt) {
+                   empresa.statusCompetencia = matchedOpt;
+                   empresa.faseOnbDP = matchedOpt; // Espelha automático!
+               } else {
+                   empresa.faseOnbDP = empresa.statusCompetencia; // Espelha o texto torto mesmo se não achar
+               }
+            }
+
             return empresa;
          });
 
