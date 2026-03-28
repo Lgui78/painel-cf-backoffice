@@ -208,10 +208,10 @@ export default function App() {
             <form onSubmit={handleLogin} className="space-y-4">
               <input type="text" autoFocus required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} 
                 className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" 
-                placeholder="gui.contato8@gmail.com" />
+                placeholder="seu.email@corp.com" />
               <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} 
                 className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" 
-                placeholder="Senha (CFRj@123)" />
+                placeholder="************" />
               <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-xl font-bold tracking-wide hover:shadow-lg hover:shadow-indigo-500/25 transition-all mt-4 border border-indigo-400/20">
                 Acessar Painel Central
               </button>
