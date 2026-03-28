@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ChangeEvent as ReactChangeEvent } from 'react';
-import { LayoutDashboard, Users, FileText, Briefcase, LogOut, Search, Plus, Download, Upload, Square, Lock, UserCircle, AlertCircle, Pencil, Check, XCircle, Globe, ShieldAlert, CalendarClock, MessageSquareText, PlaneTakeoff, ChevronLeft, Menu, Send } from 'lucide-react';
+import { supabase } from './lib/supabase';
+import { LayoutDashboard, Users, FileText, Briefcase, LogOut, Search, Download, Upload, Square, AlertCircle, Pencil, Check, XCircle, Globe, ShieldAlert, CalendarClock, MessageSquareText, PlaneTakeoff, ChevronLeft, Menu, Send } from 'lucide-react';
+
 
 // Tipos
 type Visao = 'Geral' | 'DP' | 'DP_Onb' | 'Fiscal' | 'Fiscal_Onb' | 'Contábil' | 'Contábil_Onb';
@@ -43,20 +45,13 @@ const optionsSistemas = ['Alterdata Nuvem', 'Alterdata Servidor', 'Domínio (Bas
 const optionsTributacao = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real', 'Imune / Isenta'];
 const optionsAtividade = ['Serviço', 'Comércio', 'Indústria', 'Ambos'];
 
-const empresasIniciais: Empresa[] = [
-  { id: '1', responsavel: 'Cynthia', inadimplente: true, franquia: 'CF Abreu', cnpj: '52.846.590/0001-71', tributacao: 'Simples Nacional', nome: 'MARLENE CAETANO LOPES OLIVEIRA', sistemaBase: 'Alterdata Nuvem', codigoSistema: '2541', dataEntrada: '30/08/2025', atividade: 'Serviço', bkoDP: true, bkoFiscal: true, bkoContabil: false, qtdProlabore: '2', qtdFuncionarios: '15', temVariavel: false, temAdiantamento: true, temConsignado: false, anotacoesFiscal: 'Matriz e Filial unificadas SP.', statusCompetencia: 'Pendente', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
-  { id: '2', responsavel: 'Maria Cláudia', inadimplente: false, franquia: 'CF Panambi', cnpj: '36.478.163/0001-21', tributacao: 'Imune / Isenta', nome: 'ATELIE GABRIELE SCHNEIDER', sistemaBase: 'Domínio (Base 2)', codigoSistema: '1284', dataEntrada: '01/10/2023', atividade: 'Comércio', bkoDP: false, bkoFiscal: true, bkoContabil: true, anotacoesFiscal: 'ISENTA - Enviar prefeitura manual.', statusCompetencia: 'Entregue', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
-  { id: '3', responsavel: 'Matheus', inadimplente: false, franquia: 'CF A&T', cnpj: '11.615.171/0001-41', tributacao: 'Lucro Presumido', nome: 'W MACEDO ADMINISTRAM DE IMOVEIS', sistemaBase: 'Alterdata Servidor', codigoSistema: '839', dataEntrada: '15/05/2024', atividade: 'Ambos', bkoDP: true, bkoFiscal: true, bkoContabil: true, qtdProlabore: '10', qtdFuncionarios: '45', temVariavel: true, temAdiantamento: false, temConsignado: true, anotacoesFiscal: '', statusCompetencia: 'Pendente', faseOnbDP: 'Concluído', faseOnbFiscal: 'Concluído', faseOnbContabil: 'Concluído', temProcuracao: true },
-  { id: '4', responsavel: 'Equipe Onboarding', inadimplente: false, franquia: 'CF Nova Chegada', cnpj: '11.222.333/0001-44', tributacao: 'Simples Nacional', nome: 'NOVA EMPRESA EM IMPLANTAÇÃO', sistemaBase: 'Domínio (Base 1)', codigoSistema: '999', dataEntrada: '10/01/2026', atividade: 'Serviço', bkoDP: true, bkoFiscal: true, bkoContabil: false, anotacoesFiscal: '', statusCompetencia: 'Pendente', faseOnbDP: 'Falta Parametrizar', faseOnbFiscal: 'Liberado (Envio)', faseOnbContabil: 'Concluído', temProcuracao: false },
-];
-
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   
-  const [empresas, setEmpresas] = useState<Empresa[]>(empresasIniciais);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
@@ -66,8 +61,30 @@ export default function App() {
   const [editForm, setEditForm] = useState<Empresa | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const updateEmpresaDirectly = (id: string, updates: Partial<Empresa>) => {
+  // ---------- INTEGRAÇÃO SUPABASE ----------
+  const fetchEmpresas = async () => {
+    const { data } = await supabase.from('backoffice_empresas').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setEmpresas(data as Empresa[]);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchEmpresas();
+    }
+  }, [isLoggedIn]);
+
+  const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
+    // 1. Atualização Otimista Rápida (Pra não dar delay no clique)
     setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    
+    // 2. Gravação Oficial Pique Banco Central
+    const { error } = await supabase.from('backoffice_empresas').update(updates).eq('id', id);
+    if (error) {
+       console.error("Erro ao salvar no cofre:", error);
+       alert("Erro de comunicação com o servidor na nuvem.");
+    }
   };
 
   const startEditing = (emp: Empresa) => {
@@ -93,14 +110,26 @@ export default function App() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(loginEmail.trim().toLowerCase() === 'gui.contato8@gmail.com' && loginPassword === 'CFRj@123') {
-      setIsLoggedIn(true);
-      setLoginError('');
+    setLoginError('');
+    // Conexão direta com Autenticação Supabase
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPassword,
+    });
+    
+    if (error) {
+      setLoginError('Acesso Negado. Credenciais inválidas no servidor central.');
     } else {
-      setLoginError('Credenciais incorretas.');
+      setIsLoggedIn(true);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setLoginPassword('');
   };
 
 
@@ -173,8 +202,8 @@ export default function App() {
                  </div>
               </div>
             </div>
-            <h1 className="text-2xl font-black text-center mb-2 text-white tracking-tight">CF OS</h1>
-            <p className="text-center text-slate-400 text-xs font-semibold uppercase tracking-widest mb-8">Gestão Operacional de Franquias</p>
+            <h1 className="text-2xl font-black text-center mb-2 text-white tracking-tight">BACKOFFICE</h1>
+            <p className="text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-8">Gestão Operacional CF</p>
             
             <form onSubmit={handleLogin} className="space-y-4">
               <input type="text" autoFocus required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} 
@@ -186,6 +215,7 @@ export default function App() {
               <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-xl font-bold tracking-wide hover:shadow-lg hover:shadow-indigo-500/25 transition-all mt-4 border border-indigo-400/20">
                 Acessar Painel Central
               </button>
+              {loginError && <p className="text-rose-400 text-[11px] text-center font-bold mt-3">* {loginError}</p>}
             </form>
           </div>
         </div>
@@ -219,9 +249,7 @@ export default function App() {
     );
   };
 
-  const BkoBadge = ({ ativo, label, isEdit, onChange }: {ativo: boolean, label: string, isEdit: boolean, onChange?: (val:boolean)=>void}) => {
-    const color = label === 'DP' ? 'blue' : label === 'FIS' ? 'amber' : 'purple';
-    
+  const BkoBadge = ({ ativo, label, isEdit, onChange }: {ativo: boolean, label: string, isEdit: boolean, onChange?: (val:boolean)=>void}) => {    
     if (isEdit) {
       return (
         <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition w-full border border-transparent hover:border-slate-200">
@@ -367,7 +395,7 @@ export default function App() {
            </div>
 
            <div className="p-4 border-t border-white/5 bg-[#0A101D] min-w-[230px]">
-              <button onClick={() => { setIsLoggedIn(false); setLoginPassword(''); }} className="flex w-full items-center justify-center gap-2 text-slate-500 hover:text-rose-400 px-3 py-2 text-[11px] font-bold uppercase transition-all">
+              <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 text-slate-500 hover:text-rose-400 px-3 py-2 text-[11px] font-bold uppercase transition-all">
                 <LogOut size={14} /> Sair do Sistema
               </button>
            </div>
