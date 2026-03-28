@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ChangeEvent as ReactChangeEvent } from 'react';
 import { supabase } from './lib/supabase';
+import Papa from 'papaparse';
 import { LayoutDashboard, Users, FileText, Briefcase, LogOut, Search, Download, Upload, Square, AlertCircle, Pencil, Check, XCircle, Globe, ShieldAlert, CalendarClock, MessageSquareText, PlaneTakeoff, ChevronLeft, Menu, Send } from 'lucide-react';
 
 
@@ -217,7 +218,11 @@ export default function App() {
   ];
 
   const exportToCSV = () => {
-    const csvContent = [getHeadersCSV().join(';'), ...empresasFiltradas.map(emp => mapEmpresaToRaw(emp).join(';'))].join('\n');
+    const csvContent = [
+       getHeadersCSV().join(','),
+       ...empresasFiltradas.map(e => mapEmpresaToRaw(e).map(val => `"${val}"`).join(','))
+    ].join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -225,14 +230,95 @@ export default function App() {
     link.click();
   };
 
-  const handleFileUpload = (e: ReactChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      alert("Planilha Excel 2.0 carregada com sucesso.");
+
+    // Normalizador IA pra bater textos loucos de CSV (Tira acento, tira espaço, upcase)
+    const normalizeText = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+
+    // Dicionário de sinônimos pesados cruzando "Nome no seu Excel" -> "Nome no Banco de Dados"
+    const headerMap: Record<string, string> = {
+      'CODIGO': 'codigoSistema',
+      'EMPRESA': 'nome',
+      'EMPRESAS': 'nome',
+      'RAZAO SOCIAL': 'nome',
+      'FRANQUIA': 'franquia',
+      'CNPJ': 'cnpj',
+      'TRIBUTACAO': 'tributacao',
+      'ATIVIDADE': 'atividade',
+      'PRO-LABORE': 'qtdProlabore',
+      'PRO LABORE': 'qtdProlabore',
+      'FUNCIONARIOS': 'qtdFuncionarios',
+      'SISTEMA': 'sistemaBase',
+      'SIST. BASE': 'sistemaBase',
+      'VARIAVEL': 'temVariavel',
+      'ADIANTAMENTO': 'temAdiantamento',
+      'CONSIGNADO': 'temConsignado',
+      'PROCURACAO': 'temProcuracao',
+      'RESPONSAVEL': 'responsavel',    
+      'BLOQUEADA': 'inadimplente',
+      'INADIMPLENTE': 'inadimplente'
     };
-    reader.readAsText(file);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+         const rawData = results.data as any[];
+         if(rawData.length === 0) return;
+
+         const rawHeaders = Object.keys(rawData[0]);
+         const mappedHeaders: Record<string, string> = {};
+         
+         rawHeaders.forEach(rh => {
+            const normalizedInfo = normalizeText(rh);
+            for (const [key, dbCol] of Object.entries(headerMap)) {
+               if(normalizedInfo.includes(key)) {
+                  mappedHeaders[rh] = dbCol;
+                  break;
+               }
+            }
+         });
+
+         const toInsert = rawData.map(row => {
+            const empresa: any = {
+               franquia: 'Sem Franq', nome: '', cnpj: '', tributacao: 'Não Definida', 
+               sistemaBase: 'Alterdata', codigoSistema: '', responsavel: 'Não Def',
+               atividade: '', dataEntrada: new Date().toLocaleDateString('pt-BR'),
+               inadimplente: false, statusCompetencia: 'Pendente',
+               faseOnbDP: 'Falta Parametrizar', faseOnbFiscal: 'Falta Parametrizar', faseOnbContabil: 'Falta Parametrizar',
+               temProcuracao: false, bkoDP: true, bkoFiscal: true, bkoContabil: true,
+               qtdProlabore: '0', qtdFuncionarios: '0', temVariavel: false, temAdiantamento: false, temConsignado: false,
+               anotacoesFiscal: '', encaminhadoPara: null
+            };
+
+            for (const [rawKey, rawVal] of Object.entries(row)) {
+               const dbCol = mappedHeaders[rawKey];
+               if(dbCol) {
+                  const valStr = String(rawVal).trim();
+                  const valUpper = valStr.toUpperCase();
+                  if (['temVariavel', 'temAdiantamento', 'temConsignado', 'temProcuracao', 'inadimplente'].includes(dbCol)) {
+                     empresa[dbCol] = valUpper === 'SIM' || valUpper === 'TRUE';
+                  } else {
+                     empresa[dbCol] = valStr || empresa[dbCol]; // Usa STR ou deixa o defaultValue
+                  }
+               }
+            }
+            if(!empresa.nome) empresa.nome = 'Empresa Desconhecida (Ver Excel)';
+            return empresa;
+         });
+
+         const { data, error } = await supabase.from('backoffice_empresas').insert(toInsert).select();
+         
+         if(error) {
+            alert(`Erro na importação: ${error.message}`);
+         } else if(data) {
+            setEmpresas([...data, ...empresas]);
+            alert(`🔥 MAGIA FEITA: Cruzamento Realizado! ${data.length} novas empresas foram injetadas e disparadas para o Onboarding!`);
+         }
+      }
+    });
     e.target.value = ''; 
   };
 
