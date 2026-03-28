@@ -245,33 +245,37 @@ export default function App() {
     // Normalizador IA pra bater textos loucos de CSV (Tira acento, tira espaço, upcase)
     const normalizeText = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
 
-    // Dicionário de sinônimos pesados cruzando "Nome no seu Excel" -> "Nome no Banco de Dados"
     const headerMap: Record<string, string> = {
+      'COD': 'codigoSistema',
       'CODIGO': 'codigoSistema',
       'EMPRESA': 'nome',
       'EMPRESAS': 'nome',
       'RAZAO SOCIAL': 'nome',
       'FRANQUIA': 'franquia',
       'CNPJ': 'cnpj',
-      'TRIBUTACAO': 'tributacao',
+      'TRIBUTA': 'tributacao',
       'ATIVIDADE': 'atividade',
       'PRO-LABORE': 'qtdProlabore',
       'PRO LABORE': 'qtdProlabore',
       'FUNCIONARIOS': 'qtdFuncionarios',
       'SISTEMA': 'sistemaBase',
       'SIST. BASE': 'sistemaBase',
+      'BASE': 'sistemaBase',
+      'DATA': 'dataEntrada',
       'VARIAVEL': 'temVariavel',
       'ADIANTAMENTO': 'temAdiantamento',
       'CONSIGNADO': 'temConsignado',
       'PROCURACAO': 'temProcuracao',
       'RESPONSAVEL': 'responsavel',    
+      'COLABORADOR': 'responsavel',    
+      'ANALISTA': 'responsavel',    
       'BLOQUEADA': 'inadimplente',
       'INADIMPLENTE': 'inadimplente',
       'STATUS': 'statusCompetencia',
       'SITUACAO': 'statusCompetencia',
       'FASE': 'statusCompetencia',
-      '_*': 'statusCompetencia', // Aquele cabeçalho estranho
-      '': 'statusCompetencia' // Coluna vazia
+      '_*': 'statusCompetencia', 
+      '': 'statusCompetencia' 
     };
 
     // Opções corretas para bater o texto vindo do Excel:
