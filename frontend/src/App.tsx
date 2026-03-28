@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import type { ChangeEvent as ReactChangeEvent } from 'react';
 import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { LayoutDashboard, Users, FileText, Briefcase, LogOut, Search, Download, Upload, Square, AlertCircle, Pencil, Check, XCircle, Globe, ShieldAlert, CalendarClock, MessageSquareText, PlaneTakeoff, ChevronLeft, Menu, Send } from 'lucide-react';
@@ -48,6 +47,13 @@ const optionsAtividade = ['Serviço', 'Comércio', 'Indústria', 'Ambos'];
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // Tentar restaurar o login do F5
+  useEffect(() => {
+     if(localStorage.getItem('cf_auth') === 'true') {
+        setIsLoggedIn(true);
+     }
+  }, []);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -171,12 +177,14 @@ export default function App() {
     if (error) {
       setLoginError('Acesso Negado. Credenciais inválidas no servidor central.');
     } else {
+      localStorage.setItem('cf_auth', 'true');
       setIsLoggedIn(true);
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('cf_auth');
     setIsLoggedIn(false);
     setLoginPassword('');
   };
