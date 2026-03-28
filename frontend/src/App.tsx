@@ -61,6 +61,13 @@ export default function App() {
   const [editForm, setEditForm] = useState<Empresa | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Estados do Modal de Nova Empresa
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [novaEmpresaForm, setNovaEmpresaForm] = useState({
+     franquia: '', razaoSocial: '', cnpj: '', tributacao: 'Simples Nacional', 
+     sistemaBase: 'Alterdata Nuvem', codigoSistema: '', responsavel: 'Não Definido'
+  });
+
   // ---------- INTEGRAÇÃO SUPABASE ----------
   const fetchEmpresas = async () => {
     const { data } = await supabase.from('backoffice_empresas').select('*').order('created_at', { ascending: false });
@@ -83,7 +90,48 @@ export default function App() {
     const { error } = await supabase.from('backoffice_empresas').update(updates).eq('id', id);
     if (error) {
        console.error("Erro ao salvar no cofre:", error);
-       alert("Erro de comunicação com o servidor na nuvem.");
+       alert("Ocorreu um erro ao salvar no Banco. Verifique se as Permissões (RLS) estão liberadas no Supabase.");
+    }
+  };
+
+  const criarNovaOperacao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+       franquia: novaEmpresaForm.franquia,
+       nome: novaEmpresaForm.razaoSocial,
+       cnpj: novaEmpresaForm.cnpj,
+       tributacao: novaEmpresaForm.tributacao,
+       sistemaBase: novaEmpresaForm.sistemaBase,
+       codigoSistema: novaEmpresaForm.codigoSistema,
+       responsavel: novaEmpresaForm.responsavel,
+       atividade: 'Serviço',
+       dataEntrada: new Date().toLocaleDateString('pt-BR'),
+       inadimplente: false,
+       statusCompetencia: 'Pendente',
+       faseOnbDP: 'Falta Parametrizar',
+       faseOnbFiscal: 'Falta Parametrizar', 
+       faseOnbContabil: 'Falta Parametrizar',
+       temProcuracao: false,
+       bkoDP: true, bkoFiscal: true, bkoContabil: true, // Começa em todos os BKOs
+       qtdProlabore: '0', qtdFuncionarios: '0',
+       temVariavel: false, temAdiantamento: false, temConsignado: false,
+       anotacoesFiscal: '',
+       encaminhadoPara: null
+    };
+
+    const { data, error } = await supabase.from('backoffice_empresas').insert([payload]).select().single();
+    
+    if (error) {
+        console.error("Erro na Criação:", error);
+        alert("Erro ao criar empresa. Certifique-se que o Supabase aceita INSERT.");
+        return;
+    }
+    
+    if (data) {
+       setEmpresas([data as Empresa, ...empresas]); // Coloca no topo
+       setIsModalOpen(false);
+       setNovaEmpresaForm({ franquia:'', razaoSocial:'', cnpj:'', tributacao:'Simples Nacional', sistemaBase:'Alterdata Nuvem', codigoSistema:'', responsavel:'Não Definido' });
+       alert("Sucesso! Empresa criada e enviada direto para a Trilha de Onboarding.");
     }
   };
 
@@ -416,6 +464,9 @@ export default function App() {
               </div>
           </div>
           <div className="flex gap-3">
+            <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 border border-emerald-500">
+               + Nova Operação
+            </button>
             <label className="bg-[#0A101D] hover:bg-[#131B2F] border border-white/10 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold shadow-lg transition-all cursor-pointer flex items-center gap-2">
               <Upload size={14} className="text-slate-400" /> Importar CSV
               <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
@@ -722,6 +773,71 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* MODAL CADASTRAR NOVA OPERAÇÃO */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#040812]/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+           <div className="bg-[#0A101D] border border-white/10 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
+              <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#131B2F]/50">
+                 <h3 className="text-white font-black text-lg flex items-center gap-2">
+                    <PlaneTakeoff className="text-emerald-500" />
+                    Cadastrar Nova Empresa
+                 </h3>
+                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors"><XCircle size={20}/></button>
+              </div>
+
+              <form onSubmit={criarNovaOperacao} className="p-6 space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Franquia</label>
+                      <input required type="text" className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Ex: RJ - Centro" value={novaEmpresaForm.franquia} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, franquia:e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">CNPJ</label>
+                      <input required type="text" className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="00.000.000/0000-00" value={novaEmpresaForm.cnpj} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, cnpj:e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Razão Social</label>
+                    <input required type="text" className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Nome da Empresa LTDA" value={novaEmpresaForm.razaoSocial} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, razaoSocial:e.target.value})} />
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tributação</label>
+                      <select className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" value={novaEmpresaForm.tributacao} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, tributacao:e.target.value})}>
+                          {optionsTributacao.map(t=><option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sistema Contábil</label>
+                      <select className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" value={novaEmpresaForm.sistemaBase} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, sistemaBase:e.target.value})}>
+                          {optionsSistemas.map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Código no Sistema</label>
+                      <input type="text" className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Ex: 1545" value={novaEmpresaForm.codigoSistema} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, codigoSistema:e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Auditor / Analista</label>
+                      <input type="text" className="w-full bg-[#131B2F] border border-white/10 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Nome do Responsável" value={novaEmpresaForm.responsavel} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, responsavel:e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-3 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors flex-1">Cancelar</button>
+                    <button type="submit" className="px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-colors flex-1 shadow-lg shadow-emerald-500/20">Finalizar e Iniciar Onboarding</button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }
