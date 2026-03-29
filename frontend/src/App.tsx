@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
-  Users, Send, ShieldAlert, PlaneTakeoff, 
+  Users, PlaneTakeoff, 
   LogOut, Globe, LayoutDashboard, Search, Upload, Download,
   Pencil, ChevronLeft, Menu, FileText
 } from 'lucide-react';
