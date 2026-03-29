@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
-  Users, Send, ShieldAlert, Check, CalendarClock, PlaneTakeoff, XCircle,
-  LogOut, Globe, LayoutDashboard, MessageSquareText, Search, Upload, Download,
-  Square, AlertCircle, Pencil, ChevronLeft, Menu, FileText, Briefcase
+  Users, Send, ShieldAlert, PlaneTakeoff, 
+  LogOut, Globe, LayoutDashboard, Search, Upload, Download,
+  Pencil, ChevronLeft, Menu, FileText
 } from 'lucide-react';
 
 // Tipos
@@ -39,9 +39,7 @@ interface Empresa {
   encaminhadoPara?: string; 
 }
 
-const optionsSistemas = ['Alterdata Nuvem', 'Alterdata Servidor', 'Domínio (Base 1)', 'Domínio (Base 2)', 'Domínio (Base 3)'];
 const optionsTributacao = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real', 'Imune / Isenta'];
-const optionsAtividade = ['Serviço', 'Comércio', 'Indústria', 'Ambos'];
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -59,9 +57,6 @@ export default function App() {
   const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
-  const [filtroMes, setFiltroMes] = useState('Março/2026');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Empresa | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [novaEmpresaForm, setNovaEmpresaForm] = useState({
@@ -130,7 +125,6 @@ export default function App() {
 
   const isOnbView = visaoAtiva.endsWith('_Onb');
   const baseSector = visaoAtiva.replace('_Onb', '');
-  const hideAtividade = baseSector === 'DP' || isOnbView;
 
   const empresasFiltradas = empresas.filter(e => {
     const isResponsavelMatch = filterResponsavel === 'Todos' || e.responsavel === filterResponsavel;
@@ -175,9 +169,7 @@ export default function App() {
          
          rawHeaders.forEach((rh, index) => {
             const normalized = normalizeText(rh);
-            // Fallback: Se a primeira coluna não mapear nada, ela VAI ser o responsável
             if (index === 0) mappedHeaders[rh] = 'responsavel';
-
             for (const [key, dbCol] of Object.entries(headerMap)) {
                if(normalized.includes(key)) {
                   mappedHeaders[rh] = dbCol;
@@ -209,7 +201,6 @@ export default function App() {
                }
             });
 
-            // Espelhamento inteligente de Onboarding para todas as fases
             if (empresa.statusCompetencia && empresa.statusCompetencia !== 'Pendente') {
                empresa.faseOnbDP = empresa.statusCompetencia;
                empresa.faseOnbFiscal = empresa.statusCompetencia;
@@ -223,7 +214,7 @@ export default function App() {
          if(error) alert(`Erro Supabase: ${error.message}`);
          else if(data) {
             setEmpresas([...data, ...empresas]);
-            alert(`🔥 SUCESSO! ${data.length} empresas integradas com Responsáveis Identificados.`);
+            alert(`🔥 SUCESSO! ${data.length} empresas integradas.`);
          }
       }
     });
@@ -282,7 +273,7 @@ export default function App() {
              {isSidebarOpen ? <ChevronLeft size={18}/> : <Menu size={18}/>}
            </div>
            {['Geral', 'DP', 'Fiscal', 'Contábil'].map(v => (
-             <button key={v} onClick={() => { setVisaoAtiva(v as Visao); setIsSidebarOpen(true); }} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${baseSector === v ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
+             <button key={v} onClick={() => { setVisaoAtiva(v as Visao); setIsSidebarOpen(true); }} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${baseSector === v ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:bg-white/5'}`}>
                {v === 'Geral' ? <Globe size={20}/> : v === 'DP' ? <Users size={20}/> : v === 'Fiscal' ? <FileText size={20}/> : <LayoutDashboard size={20}/>}
              </button>
            ))}
@@ -291,7 +282,7 @@ export default function App() {
            <div className="p-6 h-[88px] flex items-center border-b border-white/5"><span className="text-white font-black text-xs tracking-widest uppercase">Módulos Administrativos</span></div>
            <div className="flex-1 p-3 space-y-1">
              {['Geral', 'DP', 'Fiscal', 'Contábil'].map(m => (
-               <div key={m}>
+               <div key={m} className={baseSector === m ? 'bg-white/5 rounded-xl pb-2' : ''}>
                  <button onClick={() => setVisaoAtiva(m as Visao)} className={`w-full flex items-center gap-3 p-3 rounded-lg text-[12px] font-bold ${visaoAtiva === m ? 'bg-indigo-500/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{m}</button>
                  {m !== 'Geral' && baseSector === m && (
                    <div className="pl-6 mt-1 flex flex-col gap-1">
@@ -308,18 +299,18 @@ export default function App() {
 
       <main className={`flex-1 transition-all ${isSidebarOpen ? 'ml-[280px]' : 'ml-[70px]'} p-8 h-screen overflow-hidden flex flex-col`}>
         <header className="flex justify-between items-center mb-10 shrink-0">
-          <div><h2 className="text-2xl font-black text-white uppercase tracking-tight"> {visaoAtiva.replace('_', ' ')}</h2><p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Status em Tempo Real</p></div>
+          <div><h2 className="text-2xl font-black text-white uppercase tracking-tight"> {visaoAtiva.replace('_', ' ')}</h2><p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Gestão Central</p></div>
           <div className="flex gap-3">
              <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20">+ NOVA OPERAÇÃO</button>
-             <label className="bg-white/5 border border-white/10 text-slate-300 px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer flex items-center gap-2 hover:bg-white/10 transition-all"><Upload size={14}/> CSV<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
-             <button onClick={() => alert('Download Iniciado')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2"><Download size={14}/> EXPORTAR</button>
+             <label className="bg-white/5 border border-white/10 text-slate-300 px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer flex items-center gap-2 hover:bg-white/10 transition-all"><Upload size={14}/> IMPORTAR CSV<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
+             <button onClick={() => alert('Exportação em breve...')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2"><Download size={14}/> EXPORTAR</button>
           </div>
         </header>
 
         <div className="bg-[#0A101D] rounded-3xl border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
           <div className="p-5 border-b border-white/5 flex justify-between items-center gap-4 bg-[#0D1424]">
-             <div className="relative flex-1 max-w-lg"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16}/><input type="text" placeholder="Localizar empresa ou analista..." className="w-full pl-11 pr-5 py-3 bg-[#131B2F] border border-white/5 rounded-2xl text-[13px] text-white outline-none focus:ring-1 focus:ring-indigo-500" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
-             <select className="bg-[#131B2F] border border-white/5 text-slate-400 rounded-2xl px-4 py-3 text-xs font-bold outline-none cursor-pointer" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
+             <div className="relative flex-1 max-w-lg"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16}/><input type="text" placeholder="Localizar..." className="w-full pl-11 pr-5 py-3 bg-[#131B2F] border border-white/5 rounded-2xl text-[13px] text-white outline-none" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
+             <select className="bg-[#131B2F] border border-white/5 text-slate-400 rounded-2xl px-4 py-3 text-xs font-bold" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
                 <option value="Todos">TODOS OS ANALISTAS</option>
                 {colaboradoresSetor.map(c => <option key={c.nome} value={c.nome}>{c.nome.toUpperCase()}</option>)}
              </select>
@@ -332,7 +323,7 @@ export default function App() {
                   <th className="px-8 py-5 text-center w-20">AÇÃO</th>
                   <th className="px-6 py-5">STATUS</th>
                   <th className="px-6 py-5">EMPRESA</th>
-                  <th className="px-6 py-5">ANLISTA</th>
+                  <th className="px-6 py-5">ANALISTA</th>
                   <th className="px-6 py-5">BASE</th>
                   <th className="px-6 py-5 text-center">BKO</th>
                 </tr>
@@ -341,7 +332,7 @@ export default function App() {
                 {empresasFiltradas.map(emp => (
                   <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-8 py-4 text-center">
-                      <button onClick={() => { setEditingId(emp.id); setEditForm({...emp}); }} className="p-2 text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all"><Pencil size={15} /></button>
+                      <button onClick={() => alert('Edição em breve...')} className="p-2 text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all"><Pencil size={15} /></button>
                     </td>
                     <td className="px-6 py-4">
                        <InlineBadgeSelect 
@@ -383,18 +374,18 @@ export default function App() {
            <div className="bg-[#0A101D] border border-white/10 rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl">
               <h3 className="text-white text-xl font-black mb-8 uppercase tracking-widest flex items-center gap-3"><PlaneTakeoff className="text-indigo-500"/> Nova Operação</h3>
               <form onSubmit={criarNovaOperacao} className="space-y-5">
-                 <input required className="w-full bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white outline-none" placeholder="RAZÃO SOCIAL" value={novaEmpresaForm.razaoSocial} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, razaoSocial:e.target.value})} />
+                 <input required className="w-full bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white" placeholder="RAZÃO SOCIAL" value={novaEmpresaForm.razaoSocial} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, razaoSocial:e.target.value})} />
                  <div className="grid grid-cols-2 gap-4">
-                   <input required className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white outline-none" placeholder="FRANQUIA" value={novaEmpresaForm.franquia} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, franquia:e.target.value})} />
-                   <input required className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white outline-none" placeholder="CNPJ" value={novaEmpresaForm.cnpj} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, cnpj:e.target.value})} />
+                   <input required className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white" placeholder="FRANQUIA" value={novaEmpresaForm.franquia} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, franquia:e.target.value})} />
+                   <input required className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white" placeholder="CNPJ" value={novaEmpresaForm.cnpj} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, cnpj:e.target.value})} />
                  </div>
                  <div className="grid grid-cols-2 gap-4">
-                    <select className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-slate-400 outline-none" value={novaEmpresaForm.tributacao} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, tributacao:e.target.value})}>{optionsTributacao.map(t=><option key={t}>{t}</option>)}</select>
-                    <input className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white outline-none" placeholder="ANALISTA" value={novaEmpresaForm.responsavel} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, responsavel:e.target.value})} />
+                    <select className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-slate-400" value={novaEmpresaForm.tributacao} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, tributacao:e.target.value})}>{optionsTributacao.map(t=><option key={t}>{t}</option>)}</select>
+                    <input className="bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-sm text-white" placeholder="ANALISTA" value={novaEmpresaForm.responsavel} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, responsavel:e.target.value})} />
                  </div>
                  <div className="flex gap-4 pt-6">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-all">Cancelar</button>
-                    <button type="submit" className="flex-1 py-4 bg-indigo-600 rounded-2xl text-white font-black uppercase text-[10px] tracking-[0.2em] shadow-lg shadow-indigo-600/30">ATIVAR TRILHA</button>
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-500 font-bold uppercase text-[10px]">Cancelar</button>
+                    <button type="submit" className="flex-1 py-4 bg-indigo-600 rounded-2xl text-white font-black uppercase text-[10px]">ATIVAR TRILHA</button>
                  </div>
               </form>
            </div>
