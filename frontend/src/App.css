@@ -1,3 +1,43 @@
+/* ============================
+   SCROLLBARS CUSTOM - BACKOFFICE
+   ============================ */
+
+/* Scrollbar sempre visível */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+/* Vertical (direita) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.9);
+}
+
+/* Canto onde as duas barras se encontram */
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ============================
+   FIM SCROLLBARS
+   ============================ */
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;
