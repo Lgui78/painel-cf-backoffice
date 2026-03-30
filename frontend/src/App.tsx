@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
   Users, LogOut, Globe, LayoutDashboard, Search, Upload,
-  Pencil, Menu, FileText, Archive, ShieldAlert, X, ShieldCheck, Lock
+  Pencil, Menu, FileText, Archive, ShieldCheck, Lock
 } from 'lucide-react';
 
 // Tipos
@@ -66,7 +66,6 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [regName, setRegName] = useState('');
 
   const baseSector = visaoAtiva.split('_')[0];
   const isOnbView = visaoAtiva.includes('_Onb');
