@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import { 
   Users, LogOut, Globe, Search, Upload,
   Pencil, Menu, FileText, Archive, X, ShieldCheck, CheckCircle2,
-  Trash2, ArrowRightCircle, Rocket
+  Trash2, ArrowRightCircle, Rocket, UserCog, BookOpen
 } from 'lucide-react';
 
 import './App.css';
@@ -462,11 +462,26 @@ export default function App() {
         <div className="w-[90px] flex flex-col items-center py-10 gap-10 h-full shrink-0 border-r border-white/5">
            <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center cursor-pointer shadow-indigo-500/50 shadow-lg group"><Menu size={24} className="text-white group-hover:rotate-90 transition-transform"/></div>
            <nav className="flex flex-col gap-6">
-             {['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo', 'Usuarios'].map(v => (
-               <button key={v} onClick={() => setVisaoAtiva(v as Visao)} title={v} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${visaoAtiva === v ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'text-slate-600 hover:bg-white/5'}`}>
-                 {v === 'Geral' ? <Globe size={24}/> : v === 'DP' ? <Users size={24}/> : v === 'Fiscal' ? <FileText size={24}/> : v === 'Arquivo' ? <Archive size={24}/> : <ShieldCheck size={24}/>}
-               </button>
-             ))}
+              {(['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo', 'Usuarios'] as Visao[]).map(v => {
+                const pendingCount = v === 'Usuarios' ? allProfiles.filter(p => !p.approved).length : 0;
+                const icon = v === 'Geral' ? <Globe size={22}/>
+                           : v === 'DP' ? <Users size={22}/>
+                           : v === 'Fiscal' ? <FileText size={22}/>
+                           : v === 'Contábil' ? <BookOpen size={22}/>
+                           : v === 'Arquivo' ? <Archive size={22}/>
+                           : <UserCog size={22}/>;
+                return (
+                  <button key={v} onClick={() => setVisaoAtiva(v)} title={v}
+                    className={`relative w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                      visaoAtiva === v ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'text-slate-600 hover:bg-white/5 hover:text-slate-300'
+                    }`}>
+                    {icon}
+                    {pendingCount > 0 && (
+                      <span className="absolute top-2 right-2 w-3 h-3 bg-orange-500 rounded-full animate-pulse border border-[#0A101D]" title={`${pendingCount} aguardando aprovação`}/>
+                    )}
+                  </button>
+                );
+              })}
            </nav>
            <button onClick={() => { localStorage.removeItem('cf_user'); setIsLoggedIn(false); }} className="mt-auto mb-12 text-rose-500/30 hover:text-rose-500"><LogOut size={24}/></button>
         </div>
