@@ -7,8 +7,28 @@ import {
   Trash2, ArrowRightCircle, Rocket
 } from 'lucide-react';
 
+import './App.css';
+
 // Tipos
 type Visao = 'Geral' | 'DP' | 'Fiscal' | 'Contábil' | 'Arquivo' | 'Usuarios';
+
+const customScrollStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99,102,241,0.5);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99,102,241,0.8);
+  }
+`;
 
 interface UserProfile {
   id: string;
@@ -305,6 +325,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#040812] flex text-slate-200 font-sans overflow-hidden">
+      <style>{customScrollStyles}</style>
       <aside className={`flex h-screen fixed z-50 transition-all duration-500 ${isSidebarOpen ? 'w-[300px]' : 'w-[90px]'} bg-[#0A101D] border-r border-white/5 shadow-2xl backdrop-blur-3xl`}>
         <div className="w-[90px] flex flex-col items-center py-10 gap-10 h-full shrink-0 border-r border-white/5">
            <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center cursor-pointer shadow-indigo-500/50 shadow-lg group"><Menu size={24} className="text-white group-hover:rotate-90 transition-transform"/></div>
@@ -393,8 +414,8 @@ export default function App() {
               </div>
 
               <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
-                <div className="flex-1 overflow-auto scrollbar-hide px-8">
-                  <div className="min-w-[1800px]">
+                <div className="flex-1 overflow-auto pb-4 px-8 custom-scrollbar">
+                  <div className="min-w-[1400px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
                         <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
