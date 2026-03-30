@@ -120,7 +120,7 @@ export default function App() {
     Papa.parse(file, {
       header: true, 
       skipEmptyLines: 'greedy', 
-      encoding: 'ISO-8859-1',
+      // Removido o encoding ISO para forçar o sistema a aceitar o UTF-8 (acentuação perfeita) padrão
       complete: async (results) => {
          const rawData = results.data as any[];
          
@@ -138,15 +138,8 @@ export default function App() {
                responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || 'Sem Analista',
                tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
                sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
-               isOnboarding: false,
-               arquivada: false,
-               bkoDP: true,
-               bkoFiscal: true,
-               bkoContabil: true,
-               statusCompetencia: 'Pendente',
-               faseOnbDP: 'Fase 1: Coleta',
-               faseOnbFiscal: 'Fase 1: Coleta',
-               faseOnbContabil: 'Fase 1: Coleta'
+               qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['QTDFUNCIONARIOS'] || '',
+               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['QTDPROLABORE'] || ''
             };
          });
 
