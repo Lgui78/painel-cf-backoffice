@@ -377,7 +377,7 @@ export default function App() {
         )}
       </aside>
 
-      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-12 h-screen flex flex-col`}>
+      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-4 h-screen flex flex-col`}>
         <header className="flex justify-between items-start mb-8 shrink-0">
           <div className="space-y-4">
             <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
@@ -438,54 +438,54 @@ export default function App() {
               </div>
 
               <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
-                <div className="flex-1 overflow-auto pb-4 px-8 custom-scrollbar">
-                  <div className="min-w-[1400px]">
+                <div className="flex-1 overflow-x-auto overflow-y-auto pb-4 px-2 custom-scrollbar">
+                  <div className="min-w-max">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
                         <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
-                          <th className="px-5 py-5 border-b border-white/5 sticky left-0 bg-[#161B2A] z-40 text-center"><Pencil size={14}/></th>
-                          <th className="px-8 py-5 border-b border-white/5 sticky left-[60px] bg-[#161B2A] z-30 font-bold">STATUS</th>
-                          <th className="px-6 py-5 border-b border-white/5 min-w-[250px]">EMPRESA</th>
-                          <th className="px-6 py-5 border-b border-white/5">CNPJ</th>
-                          <th className="px-6 py-5 border-b border-white/5">GRUPO</th>
-                          <th className="px-6 py-5 border-b border-white/5">ANALISTA</th>
+                          <th className="px-3 py-3 border-b border-white/5 sticky left-0 bg-[#161B2A] z-40 text-center"><Pencil size={12}/></th>
+                          <th className="px-4 py-3 border-b border-white/5 sticky left-[48px] bg-[#161B2A] z-30 font-bold min-w-[160px]">STATUS</th>
+                          <th className="px-4 py-3 border-b border-white/5 min-w-[200px]">EMPRESA</th>
+                          <th className="px-4 py-3 border-b border-white/5 whitespace-nowrap">CNPJ</th>
+                          <th className="px-4 py-3 border-b border-white/5">GRUPO</th>
+                          <th className="px-4 py-3 border-b border-white/5">ANALISTA</th>
                           {baseSector === 'Geral' ? (
                             <>
-                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR DP</th>
-                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR FISCAL</th>
-                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR CONTÁBIL</th>
+                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR DP</th>
+                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR FISCAL</th>
+                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR CONTÁBIL</th>
                             </>
                           ) : baseSector === 'DP' ? (
                             <>
                               {isOnboardingTab ? (
                                 <>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center">TRIB.</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center">ATIVIDADE</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center font-bold text-indigo-400">FUNC.</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center">SISTEMA</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center">VAR</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center">ADIA</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center text-orange-400">COMPET.</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="PI CONCLUIDO">PI</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="ONETY">1T</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="PROCURACAO">PROC.</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="EMPRESTIMO CONSIGNADO">CONS.</th>
-                                  <th className="px-4 py-5 border-b border-white/5 text-center text-[8px]" title="CONVENCAO COLETIVA">C.COL</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center">TRIB.</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center">ATIVIDADE</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center font-bold text-indigo-400">FUNC.</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center">SISTEMA</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center">VAR</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center">ADIA</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center text-orange-400">COMPET.</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="PI CONCLUIDO">PI</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="ONETY">1T</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="PROCURACAO">PROC.</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="EMPRESTIMO CONSIGNADO">CONS.</th>
+                                  <th className="px-3 py-3 border-b border-white/5 text-center text-[8px]" title="CONVENCAO COLETIVA">C.COL</th>
                                 </>
                               ) : (
                                 <>
-                                  <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
-                                  <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                                  <th className="px-6 py-5 border-b border-white/5 text-center">VAR</th>
-                                  <th className="px-6 py-5 border-b border-white/5 text-center">ADIA</th>
+                                  <th className="px-4 py-3 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
+                                  <th className="px-4 py-3 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
+                                  <th className="px-4 py-3 border-b border-white/5 text-center">VAR</th>
+                                  <th className="px-4 py-3 border-b border-white/5 text-center">ADIA</th>
                                 </>
                               )}
                             </>
                           ) : (
                             <>
-                              <th className="px-6 py-5 border-b border-white/5">TRIBUTAÇÃO</th>
-                              <th className="px-6 py-5 border-b border-white/5">SISTEMA</th>
+                              <th className="px-4 py-3 border-b border-white/5">TRIBUTAÇÃO</th>
+                              <th className="px-4 py-3 border-b border-white/5">SISTEMA</th>
                             </>
                           )}
                         </tr>
@@ -493,68 +493,68 @@ export default function App() {
                       <tbody className="divide-y divide-white/5">
                         {filtered.map(emp => (
                           <tr key={emp.id} className="hover:bg-white/[0.04] transition-all group cursor-pointer">
-                            <td className="px-4 py-4 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-20 text-center">
-                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-2.5 bg-white/5 rounded-xl text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all shadow-lg"><Pencil size={14}/></button>
+                            <td className="px-2 py-2 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-20 text-center">
+                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-1.5 bg-white/5 rounded-lg text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all"><Pencil size={12}/></button>
                             </td>
-                            <td className="px-8 py-4 whitespace-nowrap sticky left-[60px] bg-[#0A101D]/80 backdrop-blur-md z-10">
+                            <td className="px-3 py-2 whitespace-nowrap sticky left-[48px] bg-[#0A101D]/80 backdrop-blur-md z-10">
                                {baseSector === 'Geral' ? (
-                                  <div className="flex gap-3 justify-start items-center h-full">
-                                     <div title={`DP`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`}></div>
-                                     <div title={`Fiscal`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoFiscal ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-800'}`}></div>
-                                     <div title={`Contábil`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoContabil ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-slate-800'}`}></div>
+                                  <div className="flex gap-2 justify-start items-center">
+                                     <div title="DP" className={`w-2 h-2 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.6)]' : 'bg-slate-800'}`}></div>
+                                     <div title="Fiscal" className={`w-2 h-2 rounded-full ${emp.bkoFiscal ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' : 'bg-slate-800'}`}></div>
+                                     <div title="Contábil" className={`w-2 h-2 rounded-full ${emp.bkoContabil ? 'bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.6)]' : 'bg-slate-800'}`}></div>
                                   </div>
                                ) : (
                                   <select 
                                     value={isOnboardingTab ? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia} 
                                     onChange={(e) => updateEmpresaDirectly(emp.id, isOnboardingTab ? (baseSector==='DP'?{faseOnbDP:e.target.value}:baseSector==='Fiscal'?{faseOnbFiscal:e.target.value}:{faseOnbContabil:e.target.value}) : {statusCompetencia: e.target.value})}
-                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase border-none shadow-md cursor-pointer ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
+                                    className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase border-none cursor-pointer max-w-[155px] ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
                                   >
                                      {(isOnboardingTab ? statusOnboarding : (baseSector==='DP'?statusOptionsDP : statusOptionsFiscalContabil)).map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
                                   </select>
                                )}
                             </td>
-                            <td className="px-6 py-4"><span className="text-[11px] font-black text-white tracking-widest uppercase group-hover:text-indigo-400 transition-colors">{emp.nome}</span></td>
-                            <td className="px-6 py-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
-                            <td className="px-6 py-4"><span className="text-[9px] font-black text-slate-400 bg-white/5 px-4 py-2 rounded-xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
-                            <td className="px-6 py-4"><span className={`text-[10px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase tracking-widest`}>{emp.responsavel}</span></td>
+                            <td className="px-4 py-2"><span className="text-[10px] font-black text-white uppercase group-hover:text-indigo-400 transition-colors whitespace-nowrap">{emp.nome}</span></td>
+                            <td className="px-4 py-2 font-mono text-[9px] text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
+                            <td className="px-4 py-2"><span className="text-[8px] font-black text-slate-400 bg-white/5 px-3 py-1 rounded-lg border border-white/5 uppercase whitespace-nowrap">{emp.franquia}</span></td>
+                            <td className="px-4 py-2"><span className={`text-[9px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase whitespace-nowrap`}>{emp.responsavel}</span></td>
                              
                              {baseSector === 'Geral' ? (
                                <>
-                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
-                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
-                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoContabil ? 'Ativo' : '-'}</td>
+                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
+                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
+                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoContabil ? 'Ativo' : '-'}</td>
                                </>
                             ) : baseSector === 'DP' ? (
                                <>
                                   {isOnboardingTab ? (
                                     <>
-                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-500 uppercase">{emp.tributacao?.substring(0,3)}</td>
-                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-300 uppercase">{emp.atividade || '-'}</td>
-                                      <td className="px-4 py-4 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
-                                      <td className="px-4 py-4 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
-                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 italic uppercase">{emp.sistemaBase}</td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-8 h-4 rounded-md flex items-center justify-center font-black text-[7px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-8 h-4 rounded-md flex items-center justify-center font-black text-[7px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
-                                      <td className="px-4 py-4 text-center text-[9px] font-black text-orange-400/70 whitespace-nowrap">{emp.competencia || '-'}</td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.piConcluido ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-white/5'}`}>{emp.piConcluido && <CheckCircle2 size={10} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.onety ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-white/5'}`}>{emp.onety && <Rocket size={10} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.procuracao ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5'}`}>{emp.procuracao && <FileText size={10} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.emprestimoConsignado ? 'bg-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white/5'}`}>{emp.emprestimoConsignado && <ShieldCheck size={10} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.convencaoColetiva ? 'bg-rose-500 shadow-lg shadow-rose-500/20' : 'bg-white/5'}`}>{emp.convencaoColetiva && <Users size={10} className="text-white"/>}</div></td>
+                                      <td className="px-3 py-2 text-center text-[9px] font-black text-slate-500 uppercase">{emp.tributacao?.substring(0,3)}</td>
+                                      <td className="px-3 py-2 text-center text-[9px] font-black text-slate-300 uppercase whitespace-nowrap">{emp.atividade || '-'}</td>
+                                      <td className="px-3 py-2 text-center"><div className="mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300">{emp.qtdFuncionarios || '-'}</div></td>
+                                      <td className="px-3 py-2 text-center"><div className="mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300">{emp.qtdProlabore || '-'}</div></td>
+                                      <td className="px-3 py-2 text-center text-[8px] font-black text-slate-600 italic uppercase whitespace-nowrap">{emp.sistemaBase}</td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-7 h-4 rounded flex items-center justify-center font-black text-[7px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-7 h-4 rounded flex items-center justify-center font-black text-[7px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                      <td className="px-3 py-2 text-center text-[9px] font-black text-orange-400/70 whitespace-nowrap">{emp.competencia || '-'}</td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.piConcluido ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-white/5'}`}>{emp.piConcluido && <CheckCircle2 size={9} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.onety ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-white/5'}`}>{emp.onety && <Rocket size={9} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.procuracao ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5'}`}>{emp.procuracao && <FileText size={9} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.emprestimoConsignado ? 'bg-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white/5'}`}>{emp.emprestimoConsignado && <ShieldCheck size={9} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.convencaoColetiva ? 'bg-rose-500 shadow-lg shadow-rose-500/20' : 'bg-white/5'}`}>{emp.convencaoColetiva && <Users size={9} className="text-white"/>}</div></td>
                                     </>
                                   ) : (
                                     <>
-                                       <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
-                                       <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
-                                       <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                       <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                       <td className="px-4 py-2 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300">{emp.qtdFuncionarios || '-'}</div></td>
+                                       <td className="px-4 py-2 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300">{emp.qtdProlabore || '-'}</div></td>
+                                       <td className="px-4 py-2 text-center"><div className={`mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                       <td className="px-4 py-2 text-center"><div className={`mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
                                     </>
                                   )}
                                </>
                             ) : (
                                <>
-                                  <td className="px-6 py-4 text-[9px] font-black text-white/50 uppercase">{emp.tributacao}</td>
-                                  <td className="px-6 py-4 text-[9px] font-black text-white/30 uppercase italic">{emp.sistemaBase}</td>
+                                  <td className="px-4 py-2 text-[9px] font-black text-white/50 uppercase whitespace-nowrap">{emp.tributacao}</td>
+                                  <td className="px-4 py-2 text-[9px] font-black text-white/30 uppercase italic whitespace-nowrap">{emp.sistemaBase}</td>
                                </>
                             )}
                           </tr>
