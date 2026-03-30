@@ -200,8 +200,6 @@ export default function App() {
                inadimplente: false,
                arquivada: false,
                isOnboarding: false,
-               codigoSistema: '',
-               dataEntrada: new Date().toISOString().split('T')[0],
                statusCompetencia: 'Liberado pra envio',
                faseOnbDP: 'Fase 1: Coleta',
                faseOnbFiscal: 'Fase 1: Coleta',
