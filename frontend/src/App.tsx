@@ -124,22 +124,20 @@ export default function App() {
             nome: r['EMPRESA'] || r['RAZAO SOCIAL'] || 'Empresa Nova',
             cnpj: r['CNPJ'] || '',
             franquia: r['FRANQUIA'] || 'Própria',
-            tributacao: r['TRIBUTACAO'] || 'Simples Nacional',
-            sistemaBase: r['SISTEMA'] || 'Domínio Base 1',
             responsavel: r['RESPONSAVEL'] || 'Indefinido'
          }));
 
          const { data: inserted, error: insertError } = await supabase
             .from('backoffice_empresas')
-            .upsert(toInsert, { onConflict: 'cnpj' })
+            .insert(toInsert)
             .select();
 
          if (insertError) {
-            console.error("ERRO_SUPABASE:", insertError);
-            alert(`Erro na importação: ${insertError.message} (Verifique o CNPJ ou campos extras)`);
+            console.error("ERRO_SUPABASE_DETALHADO:", insertError);
+            alert(`Erro na importação: ${insertError.message}`);
          } else {
             fetchData();
-            alert(`Mestre, ${inserted?.length} empresas importadas em ${visaoAtiva} / ${isOnboardingTab ? 'ONBOARDING' : 'MENSAL'}!`);
+            alert(`Mestre, ${inserted?.length} empresas importadas com sucesso!`);
          }
       }
     });
@@ -255,7 +253,7 @@ export default function App() {
                  {allProfiles.map(p => (
                     <div key={p.id} className="p-8 bg-white/5 border border-white/10 rounded-[3rem] flex items-center justify-between">
                        <div className="space-y-1">
-                          <h4 className="text-white font-black text-lg">{p.nome.toUpperCase()}</h4>
+                          <h4 className="text-white font-black text-lg">{(p.nome || 'SEM NOME').toUpperCase()}</h4>
                           <p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">{p.email}</p>
                        </div>
                        <div className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg">Analista Ativo</div>
