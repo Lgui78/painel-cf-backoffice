@@ -127,16 +127,9 @@ export default function App() {
             tributacao: r['TRIBUTACAO'] || 'Simples Nacional',
             sistemaBase: r['SISTEMA'] || 'Domínio Base 1',
             responsavel: r['RESPONSAVEL'] || 'Indefinido',
-            bkoDP: visaoAtiva === 'DP' || visaoAtiva === 'Geral', 
-            bkoFiscal: visaoAtiva === 'Fiscal' || visaoAtiva === 'Geral', 
-            bkoContabil: visaoAtiva === 'Contábil' || visaoAtiva === 'Geral',
-            statusCompetencia: 'Pendente', faseOnbDP: 'Pendente', 
-            qtdFuncionarios: r['QTD FOLHA'] || r['FUNCIONARIOS'] || '0',
-            qtdProlabore: r['PRO LABORE'] || r['PROLABORE'] || '0',
-            temVariavel: r['VAR'] === 'SIM' || r['VAR'] === 'Sim',
-            temAdiantamento: r['ADIA'] === 'SIM' || r['ADIA'] === 'Sim',
-            isOnboarding: isOnboardingTab,
-            arquivada: false
+            statusCompetencia: 'Pendente', 
+            faseOnbDP: 'Pendente',
+            isOnboarding: isOnboardingTab
          }));
 
          const { data: inserted, error: insertError } = await supabase
