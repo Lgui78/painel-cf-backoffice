@@ -419,8 +419,9 @@ export default function App() {
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
                         <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
-                          <th className="px-8 py-5 border-b border-white/5 sticky left-0 bg-[#161B2A] z-30">STATUS</th>
-                          <th className="px-6 py-5 border-b border-white/5">EMPRESA</th>
+                          <th className="px-5 py-5 border-b border-white/5 sticky left-0 bg-[#161B2A] z-40 text-center"><Pencil size={14}/></th>
+                          <th className="px-8 py-5 border-b border-white/5 sticky left-[60px] bg-[#161B2A] z-30 font-bold">STATUS</th>
+                          <th className="px-6 py-5 border-b border-white/5 min-w-[250px]">EMPRESA</th>
                           <th className="px-6 py-5 border-b border-white/5">CNPJ</th>
                           <th className="px-6 py-5 border-b border-white/5">GRUPO</th>
                           <th className="px-6 py-5 border-b border-white/5">ANALISTA</th>
@@ -443,13 +444,15 @@ export default function App() {
                               <th className="px-6 py-5 border-b border-white/5">SISTEMA</th>
                             </>
                           )}
-                          <th className="px-8 py-5 border-b border-white/5 text-right sticky right-0 bg-[#161B2A] z-30">AÇÕES</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filtered.map(emp => (
                           <tr key={emp.id} className="hover:bg-white/[0.04] transition-all group cursor-pointer">
-                            <td className="px-8 py-4 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
+                            <td className="px-4 py-4 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-20 text-center">
+                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-2.5 bg-white/5 rounded-xl text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all shadow-lg"><Pencil size={14}/></button>
+                            </td>
+                            <td className="px-8 py-4 whitespace-nowrap sticky left-[60px] bg-[#0A101D]/80 backdrop-blur-md z-10">
                                {baseSector === 'Geral' ? (
                                   <div className="flex gap-3 justify-start items-center h-full">
                                      <div title={`DP`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`}></div>
@@ -490,9 +493,6 @@ export default function App() {
                                   <td className="px-6 py-4 text-[9px] font-black text-white/30 uppercase italic">{emp.sistemaBase}</td>
                                 </>
                             )}
-                            <td className="px-8 py-4 text-right whitespace-nowrap sticky right-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
-                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-3 bg-white/5 rounded-2xl text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all shadow-lg"><Pencil size={16}/></button>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
