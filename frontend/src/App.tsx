@@ -445,8 +445,8 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
-                <div className="flex-1 overflow-x-auto overflow-y-auto pb-4 px-2 custom-scrollbar">
+              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 min-h-0 shadow-2xl relative">
+                <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto pb-4 px-2 custom-scrollbar">
                   <div className="min-w-[1800px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
