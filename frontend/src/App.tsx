@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
-  Users, PlaneTakeoff, 
-  LogOut, Globe, LayoutDashboard, Search, Upload, Download,
-  Pencil, ChevronLeft, Menu, FileText
+  Users, LogOut, Globe, LayoutDashboard, Search, Upload,
+  Pencil, Menu, FileText
 } from 'lucide-react';
 
 // Tipos
