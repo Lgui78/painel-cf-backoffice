@@ -91,8 +91,12 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
-  const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
-  const [isOnboardingTab, setIsOnboardingTab] = useState(false); 
+  const [visaoAtiva, setVisaoAtiva] = useState<Visao>(
+    () => (localStorage.getItem('cf_visao') as Visao) || 'Geral'
+  );
+  const [isOnboardingTab, setIsOnboardingTab] = useState(
+    () => localStorage.getItem('cf_onboarding_tab') === 'true'
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
   const [filterFranquia, setFilterFranquia] = useState('Todas');
@@ -102,6 +106,10 @@ export default function App() {
   const [isGlobalUpload, setIsGlobalUpload] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState('');
+
+  // Persiste módulo e aba no localStorage
+  useEffect(() => { localStorage.setItem('cf_visao', visaoAtiva); }, [visaoAtiva]);
+  useEffect(() => { localStorage.setItem('cf_onboarding_tab', String(isOnboardingTab)); }, [isOnboardingTab]);
 
   const fetchData = async () => {
     let query = supabase.from('backoffice_empresas').select('*');
@@ -439,7 +447,7 @@ export default function App() {
 
               <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
                 <div className="flex-1 overflow-x-auto overflow-y-auto pb-4 px-2 custom-scrollbar">
-                  <div className="min-w-max">
+                  <div className="min-w-[1800px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
                         <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
