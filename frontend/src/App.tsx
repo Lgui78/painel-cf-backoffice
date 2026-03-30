@@ -116,16 +116,39 @@ export default function App() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     Papa.parse(file, {
-      header: true, skipEmptyLines: 'greedy', encoding: 'ISO-8859-1',
+      header: true, 
+      skipEmptyLines: 'greedy', 
+      encoding: 'ISO-8859-1',
       complete: async (results) => {
          const rawData = results.data as any[];
-         const toInsert = rawData.map(r => ({
-            nome: r['EMPRESA'] || r['RAZAO SOCIAL'] || 'Empresa Nova',
-            cnpj: r['CNPJ'] || '',
-            franquia: r['FRANQUIA'] || 'Própria',
-            responsavel: r['RESPONSAVEL'] || 'Indefinido'
-         }));
+         
+         const toInsert = rawData.map(r => {
+            // Normalizar as chaves para maiúsculas pra não ter erro na hora de achar a coluna
+            const normalizedRow: any = {};
+            Object.keys(r).forEach(k => {
+               if (k) normalizedRow[k.trim().toUpperCase()] = r[k];
+            });
+
+            return {
+               nome: normalizedRow['EMPRESA'] || normalizedRow['RAZAO SOCIAL'] || normalizedRow['RAZÃO SOCIAL'] || normalizedRow['CLIENTE'] || 'Empresa Nova (Sem Nome)',
+               cnpj: normalizedRow['CNPJ'] || '',
+               franquia: normalizedRow['FRANQUIA'] || normalizedRow['GRUPO'] || 'Indefinida',
+               responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || 'Sem Analista',
+               tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
+               sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
+               isOnboarding: false,
+               arquivada: false,
+               bkoDP: true,
+               bkoFiscal: true,
+               bkoContabil: true,
+               statusCompetencia: 'Pendente',
+               faseOnbDP: 'Fase 1: Coleta',
+               faseOnbFiscal: 'Fase 1: Coleta',
+               faseOnbContabil: 'Fase 1: Coleta'
+            };
+         });
 
          const { data: inserted, error: insertError } = await supabase
             .from('backoffice_empresas')
@@ -134,11 +157,15 @@ export default function App() {
 
          if (insertError) {
             console.error("ERRO_SUPABASE_DETALHADO:", insertError);
-            alert(`Erro na importação: ${insertError.message}`);
+            alert(`Mestre, erro na importação: ${insertError.message}`);
          } else {
+            console.log("SUCESSO_IMPORT:", inserted);
             fetchData();
-            alert(`Mestre, ${inserted?.length} empresas importadas com sucesso!`);
+            alert(`Mestre, importação completa! ${inserted?.length || 0} empresas subiram para a base.`);
          }
+         
+         // Limpar o input de arquivo depois de importar
+         e.target.value = '';
       }
     });
   };
@@ -156,19 +183,39 @@ export default function App() {
   };
 
   const filtered = empresas.filter(e => {
-    const matchSearch = (e.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        (e.cnpj || '').includes(searchTerm) || 
-                        (e.franquia || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchResp = filterResponsavel === 'Todos' || e.responsavel === filterResponsavel;
-    const matchFran = filterFranquia === 'Todas' || e.franquia === filterFranquia;
-    if (visaoAtiva === 'Arquivo') return e.arquivada && matchSearch && matchResp && matchFran;
-    if (e.arquivada) return false;
-    if (isOnboardingTab !== e.isOnboarding) return false;
-    let isSectorMatch = true;
-    if (visaoAtiva === 'DP') isSectorMatch = e.bkoDP;
-    else if (visaoAtiva === 'Fiscal') isSectorMatch = e.bkoFiscal;
-    else if (visaoAtiva === 'Contábil') isSectorMatch = e.bkoContabil;
-    return matchSearch && matchResp && matchFran && isSectorMatch;
+    try {
+      const nome = String(e?.nome || '');
+      const cnpj = String(e?.cnpj || '');
+      const franquia = String(e?.franquia || '');
+      const responsavel = String(e?.responsavel || '');
+
+      const matchSearch = nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          cnpj.includes(searchTerm) || 
+                          franquia.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchResp = filterResponsavel === 'Todos' || responsavel === filterResponsavel;
+      const matchFran = filterFranquia === 'Todas' || franquia === filterFranquia;
+      
+      // Converte explicitamente caso venha string 'true' do banco
+      const isArquivada = e?.arquivada === true || String(e?.arquivada) === 'true';
+      if (visaoAtiva === 'Arquivo') return isArquivada && matchSearch && matchResp && matchFran;
+      if (isArquivada) return false;
+
+      // Mesmo tratamento para o Onboarding
+      const isOnboarding = e?.isOnboarding === true || String(e?.isOnboarding) === 'true';
+      if (isOnboardingTab !== isOnboarding) return false;
+
+      let isSectorMatch = true;
+      if (visaoAtiva === 'DP') isSectorMatch = e?.bkoDP !== false && String(e?.bkoDP) !== 'false';
+      else if (visaoAtiva === 'Fiscal') isSectorMatch = e?.bkoFiscal !== false && String(e?.bkoFiscal) !== 'false';
+      else if (visaoAtiva === 'Contábil') isSectorMatch = e?.bkoContabil !== false && String(e?.bkoContabil) !== 'false';
+      else if (visaoAtiva === 'Geral') isSectorMatch = true;
+
+      return matchSearch && matchResp && matchFran && isSectorMatch;
+    } catch (err) {
+      console.error("Erro ao processar item do filtro:", err, e);
+      return false;
+    }
   });
 
   const getAccentColor = (v: Visao) => {
@@ -181,6 +228,7 @@ export default function App() {
   };
 
   const getStatusColor = (val: string) => {
+    if (!val) return 'bg-slate-500/10 text-slate-400';
     if (val === '100% concluído' || val === 'Concluído' || val.includes('100%')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20';
     if (val.includes('Pendente') || val.includes('Aguardando') || val.includes('Sem')) return 'bg-rose-500/10 text-rose-400 border-rose-400/20';
     return 'bg-indigo-500/10 text-indigo-300 border-indigo-400/20';
