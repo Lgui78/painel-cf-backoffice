@@ -77,13 +77,37 @@ interface Empresa {
 }
 
 const statusOptionsDP = [
-  "100% concluído", "Folha enviada/variável", "Folha enviada aguardando conferência do franqueado", 
-  "Aguardando/variáveis", "Certificado com 2 etapas", "Liberado pra envio", 
-  "Sem certificado", "Certificado vencido", "Parametrizar", "Sem procuração", "Aguardando T.I"
+  "100% concluído",
+  "Folha enviada/variável",
+  "Folha enviada aguardando conferência do franqueado",
+  "Aguardando/variáveis",
+  "Aguardando retorno do cliente",
+  "Certificado com 2 etapas",
+  "Liberado pra envio",
+  "Sem certificado",
+  "Certificado vencido",
+  "Parametrizar",
+  "Sem procuração",
+  "Aguardando T.I",
+  "Aguardando documento",
+  "Em conferência",
+  "Bloqueado",
 ];
 
 const statusOptionsFiscalContabil = ["Pendente", "Em Andamento", "Concluído", "Em Conferência"];
 const statusOnboarding = ["Fase 1: Coleta", "Fase 2: Implantação", "Fase 3: Treinamento", "100% Onboarded"];
+
+const analistasDP = [
+  "Vitória Mendes",
+  "Melissa Soares",
+  "Ana Carolina Valle",
+  "Mayara Coelho",
+  "Lydi Santos",
+  "Clarisse Jordão",
+  "Sara Gabry",
+  "Isadora Soares",
+];
+
 const tributacaoOptions = ["Simples Nacional", "Lucro Presumido", "Lucro Real", "MEI", "Isento/Imune"];
 const sistemaOptions = ["Domínio Base 1", "Domínio Base 2", "Domínio Base 3", "Alterdata", "Nuvem", "Outros"];
 
@@ -749,7 +773,17 @@ export default function App() {
                
                <div className="grid grid-cols-2 gap-12">
                   <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Razão Social</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none" value={selectedEmpresa.nome} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {nome: e.target.value})}/></div>
-                  <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Analista Responsável</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none" value={selectedEmpresa.responsavel} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {responsavel: e.target.value})}/></div>
+                  <div className="space-y-4">
+                     <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Analista Responsável</label>
+                     <select
+                       className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none cursor-pointer"
+                       value={selectedEmpresa.responsavel || ''}
+                       onChange={e => updateEmpresaDirectly(selectedEmpresa!.id, {responsavel: e.target.value})}
+                     >
+                       <option value="" className="bg-[#0A101D]">-- Selecionar Analista --</option>
+                       {analistasDP.map(a => <option key={a} value={a} className="bg-[#0A101D]">{a.toUpperCase()}</option>)}
+                     </select>
+                   </div>
                   
                   <div className="col-span-2 grid grid-cols-3 gap-8 bg-black/30 p-12 rounded-[4rem] border border-white/5 mt-8 text-slate-200">
                      <div className="space-y-6">
