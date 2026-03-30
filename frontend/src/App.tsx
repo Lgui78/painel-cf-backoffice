@@ -293,7 +293,7 @@ export default function App() {
      return (
         <div className="min-h-screen bg-[#040812] flex items-center justify-center p-6 text-slate-200">
            <div className="w-full max-w-md bg-[#0A101D] border border-white/5 p-12 rounded-[3rem] shadow-2xl">
-              <h1 className="text-4xl font-black text-white italic mb-10 text-center uppercase tracking-tighter">Backoffice <span className="text-indigo-500">Mestre</span></h1>
+              <h1 className="text-3xl font-black text-white italic mb-10 text-center uppercase tracking-tighter">Backoffice <span className="text-indigo-500">Mestre</span></h1>
               <form onSubmit={handleLogin} className="space-y-6">
                  <input type="text" placeholder="E-mail Master" className="w-full bg-white/5 border border-white/10 p-6 rounded-2xl text-white outline-none focus:border-indigo-500" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} />
                  <button className="w-full py-6 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-500 transition-all">ENTRAR NO SISTEMA</button>
@@ -333,12 +333,12 @@ export default function App() {
       </aside>
 
       <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-12 h-screen flex flex-col`}>
-        <header className="flex justify-between items-start mb-12 shrink-0">
-          <div className="space-y-2">
-            <h2 className="text-7xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
-            <div className="flex gap-4 mt-6">
-                <button onClick={() => setIsOnboardingTab(false)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-2xl' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
-                <button onClick={() => setIsOnboardingTab(true)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-2xl shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
+        <header className="flex justify-between items-start mb-8 shrink-0">
+          <div className="space-y-4">
+            <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
+            <div className="flex gap-4">
+                <button onClick={() => setIsOnboardingTab(false)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
+                <button onClick={() => setIsOnboardingTab(true)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
             </div>
           </div>
           <div className="flex flex-col items-end gap-3">
@@ -357,11 +357,11 @@ export default function App() {
         </header>
 
         {visaoAtiva === 'Usuarios' ? (
-           <div className="flex-1 bg-[#0A101D]/50 rounded-[4rem] p-16 border border-white/5 overflow-auto focus:outline-none">
-              <h3 className="text-3xl font-black text-white italic mb-12">Gestão de Patrocínio Onety</h3>
-              <div className="grid grid-cols-2 gap-10">
+           <div className="flex-1 bg-[#0A101D]/50 rounded-[2rem] p-10 border border-white/5 overflow-auto focus:outline-none">
+              <h3 className="text-2xl font-black text-white italic mb-10">Gestão de Patrocínio Onety</h3>
+              <div className="grid grid-cols-2 gap-8">
                  {allProfiles.map(p => (
-                    <div key={p.id} className="p-8 bg-white/5 border border-white/10 rounded-[3rem] flex items-center justify-between">
+                    <div key={p.id} className="p-6 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-between">
                        <div className="space-y-1">
                           <div className="flex items-center gap-3">
                              <h4 className="text-white font-black text-lg">{(p.nome || 'SEM NOME').toUpperCase()}</h4>
@@ -487,7 +487,7 @@ export default function App() {
          <div className="fixed inset-0 z-[110] flex items-center justify-center p-12 backdrop-blur-3xl bg-black/80">
             <div className="bg-[#0A101D] border border-white/10 rounded-[6rem] w-full max-w-6xl p-24 shadow-2xl relative max-h-[95vh] overflow-auto scrollbar-hide animate-in zoom-in-95 duration-300">
                <button onClick={() => setIsEditModalOpen(false)} className="absolute top-16 right-16 text-slate-600 hover:text-white transition-all"><X size={48}/></button>
-               <h3 className="text-5xl font-black text-white italic mb-16 text-center uppercase tracking-tighter decoration-indigo-600 underline decoration-8 underline-offset-8">Ajuste Master Patrocinado</h3>
+               <h3 className="text-4xl font-black text-white italic mb-12 text-center uppercase tracking-tighter decoration-indigo-600 underline decoration-4 underline-offset-8">Ajuste Master Patrocinado</h3>
                
                <div className="grid grid-cols-2 gap-12">
                   <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Razão Social</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none" value={selectedEmpresa.nome} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {nome: e.target.value})}/></div>
