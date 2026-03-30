@@ -139,9 +139,14 @@ export default function App() {
             arquivada: false
          }));
 
-         const { data: inserted, error: insertError } = await supabase.from('backoffice_empresas').insert(toInsert).select();
+         const { data: inserted, error: insertError } = await supabase
+            .from('backoffice_empresas')
+            .upsert(toInsert, { onConflict: 'cnpj' })
+            .select();
+
          if (insertError) {
-            alert("Erro na importação.");
+            console.error("ERRO_SUPABASE:", insertError);
+            alert(`Erro na importação: ${insertError.message} (Verifique o CNPJ ou campos extras)`);
          } else {
             fetchData();
             alert(`Mestre, ${inserted?.length} empresas importadas em ${visaoAtiva} / ${isOnboardingTab ? 'ONBOARDING' : 'MENSAL'}!`);
