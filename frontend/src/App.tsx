@@ -37,6 +37,7 @@ interface UserProfile {
   role: 'admin' | 'analista';
   approved: boolean;
   responsavel_id?: string;
+  modulos?: string; // ex: "DP,Fiscal,Contabil,Geral"
 }
 
 interface Empresa {
@@ -154,6 +155,11 @@ export default function App() {
   const toggleUserApproval = async (id: string, current: boolean) => {
     await supabase.from('profiles').update({ approved: !current }).eq('id', id);
     setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, approved: !current } : p));
+  };
+
+  const updateProfile = async (id: string, updates: Partial<UserProfile>) => {
+    setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    await supabase.from('profiles').update(updates).eq('id', id);
   };
 
   const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
@@ -410,27 +416,77 @@ export default function App() {
         </header>
 
         {visaoAtiva === 'Usuarios' ? (
-           <div className="flex-1 bg-[#0A101D]/50 rounded-[2rem] p-10 border border-white/5 overflow-auto focus:outline-none">
-              <h3 className="text-2xl font-black text-white italic mb-10">Gestão de Patrocínio Onety</h3>
-              <div className="grid grid-cols-2 gap-8">
-                 {allProfiles.map(p => (
-                    <div key={p.id} className="p-6 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-between">
-                       <div className="space-y-1">
-                          <div className="flex items-center gap-3">
-                             <h4 className="text-white font-black text-lg">{(p.nome || 'SEM NOME').toUpperCase()}</h4>
-                             {p.role === 'admin' && <span className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-md text-[8px] uppercase font-black">Admin</span>}
-                          </div>
-                          <p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">{p.email}</p>
+           <div className="flex-1 min-h-0 overflow-y-auto bg-[#0A101D]/50 rounded-[2rem] p-6 border border-white/5 custom-scrollbar">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-base font-black text-white italic uppercase tracking-widest">Gestão de Analistas</h3>
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{allProfiles.length} usuários no sistema</span>
+              </div>
+              <div className="space-y-3">
+                 {allProfiles.map(p => {
+                   const mods = (p.modulos || 'DP,Fiscal,Contabil,Geral').split(',');
+                   const toggleMod = (mod: string) => {
+                     const newMods = mods.includes(mod) ? mods.filter(m => m !== mod) : [...mods, mod];
+                     updateProfile(p.id, { modulos: newMods.join(',') });
+                   };
+                   return (
+                     <div key={p.id} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+                       {/* STATUS BOLINHA */}
+                       <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.approved ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse'}`}></div>
+
+                       {/* EMAIL */}
+                       <span className="text-[9px] font-black text-slate-600 uppercase min-w-[180px]">{p.email}</span>
+
+                       {/* NOME EDITAVEL */}
+                       <input
+                         className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-indigo-500/50 transition-all min-w-[150px]"
+                         value={p.nome || ''}
+                         placeholder="Nome do analista..."
+                         onChange={e => setAllProfiles(prev => prev.map(u => u.id === p.id ? {...u, nome: e.target.value} : u))}
+                         onBlur={e => updateProfile(p.id, { nome: e.target.value })}
+                       />
+
+                       {/* ROLE */}
+                       <select
+                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border-none cursor-pointer outline-none ${p.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-slate-400'}`}
+                         value={p.role}
+                         onChange={e => updateProfile(p.id, { role: e.target.value as 'admin' | 'analista' })}
+                       >
+                         <option value="analista" className="bg-[#0A101D]">ANALISTA</option>
+                         <option value="admin" className="bg-[#0A101D]">ADMIN</option>
+                       </select>
+
+                       {/* MODULOS */}
+                       <div className="flex gap-1.5 flex-1">
+                         {['Geral','DP','Fiscal','Contábil'].map(mod => (
+                           <button
+                             key={mod}
+                             onClick={() => toggleMod(mod)}
+                             className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase transition-all border ${
+                               mods.includes(mod)
+                                 ? mod==='DP' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                                 : mod==='Fiscal' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                 : mod==='Contábil' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                 : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                                 : 'bg-white/[0.03] text-slate-700 border-white/5'
+                             }`}
+                           >{mod}</button>
+                         ))}
                        </div>
-                       {p.approved ? (
-                          <button onClick={() => toggleUserApproval(p.id, p.approved)} className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-400/30 transition-all cursor-pointer" title="Clique para revogar acesso">ANALISTA ATIVO</button>
-                       ) : (
-                          <button onClick={() => toggleUserApproval(p.id, p.approved)} className="bg-orange-500/10 text-orange-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-orange-400/20 shadow-lg hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-400/30 transition-all animate-pulse cursor-pointer" title="Clique para aprovar acesso">APROVAR ACESSO</button>
-                       )}
-                    </div>
-                 ))}
-               </div>
-            </div>
+
+                       {/* APROVAR/REVOGAR */}
+                       <button
+                         onClick={() => toggleUserApproval(p.id, p.approved)}
+                         className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all shrink-0 cursor-pointer ${
+                           p.approved
+                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20 hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-400/30'
+                             : 'bg-orange-500/10 text-orange-400 border-orange-400/20 hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-400/30 animate-pulse'
+                         }`}
+                       >{p.approved ? 'ATIVO ✓' : 'APROVAR'}</button>
+                     </div>
+                   );
+                 })}
+              </div>
+           </div>
          ) : (
             <>
                <div className="flex gap-2 mb-2 shrink-0">
