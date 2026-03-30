@@ -107,6 +107,8 @@ export default function App() {
   const [isGlobalUpload, setIsGlobalUpload] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState('');
+  const [loginNome, setLoginNome] = useState('');
+  const [loginMode, setLoginMode] = useState<'login' | 'register' | 'pending'>('login');
 
   // Persiste módulo e aba no localStorage
   useEffect(() => { localStorage.setItem('cf_visao', visaoAtiva); }, [visaoAtiva]);
@@ -262,7 +264,7 @@ export default function App() {
     } 
 
     if (!emailFormatado) {
-       alert("Digite seu e-mail para entrar ou solicitar acesso.");
+       alert("Digite seu e-mail para entrar.");
        return;
     }
 
@@ -270,18 +272,12 @@ export default function App() {
        const { data: profile, error } = await supabase.from('profiles').select('*').eq('email', emailFormatado).single();
 
        if (error || !profile) {
-          // Cadastra solicitação
-          const { error: insertError } = await supabase.from('profiles').insert([{ email: emailFormatado, nome: 'Novo Analista', role: 'analista', approved: false }]);
-          if (insertError) {
-             alert(`Erro ao solicitar acesso: ${insertError.message}`);
-          } else {
-             alert("Sua solicitação de acesso foi enviada para o Mestre! Aguarde aprovação.");
-          }
+          alert("E-mail não encontrado. Clique em 'Solicitar Acesso' para se cadastrar.");
           return;
        }
 
        if (!profile.approved) {
-          alert("Calma lá! Seu acesso ainda está em ANÁLISE pelo Mestre. Tente novamente mais tarde.");
+          setLoginMode('pending');
           return;
        }
 
@@ -291,6 +287,37 @@ export default function App() {
        localStorage.setItem('cf_user', JSON.stringify(profile));
     } catch (err) {
        alert("Erro de conexão com o banco de usuários.");
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailFormatado = loginEmail.trim().toLowerCase();
+    const nomeFormatado = loginNome.trim();
+    if (!emailFormatado || !nomeFormatado) {
+      alert("Preencha nome e e-mail para solicitar acesso.");
+      return;
+    }
+    try {
+      // Verifica se já existe
+      const { data: existing } = await supabase.from('profiles').select('id,approved').eq('email', emailFormatado).single();
+      if (existing) {
+        if (existing.approved) {
+          alert("Este e-mail já tem acesso aprovado. Clique em Entrar.");
+          setLoginMode('login');
+        } else {
+          setLoginMode('pending');
+        }
+        return;
+      }
+      const { error } = await supabase.from('profiles').insert([{ email: emailFormatado, nome: nomeFormatado, role: 'analista', approved: false }]);
+      if (error) {
+        alert(`Erro ao solicitar acesso: ${error.message}`);
+      } else {
+        setLoginMode('pending');
+      }
+    } catch (err) {
+      alert("Erro de conexão.");
     }
   };
 
@@ -348,17 +375,84 @@ export default function App() {
   const baseSector = visaoAtiva;
 
   if (!isLoggedIn) {
-     return (
-        <div className="min-h-screen bg-[#040812] flex items-center justify-center p-6 text-slate-200">
-           <div className="w-full max-w-md bg-[#0A101D] border border-white/5 p-12 rounded-[3rem] shadow-2xl">
-              <h1 className="text-3xl font-black text-white italic mb-10 text-center uppercase tracking-tighter">Backoffice <span className="text-indigo-500">Mestre</span></h1>
-              <form onSubmit={handleLogin} className="space-y-6">
-                 <input type="text" placeholder="E-mail Master" className="w-full bg-white/5 border border-white/10 p-6 rounded-2xl text-white outline-none focus:border-indigo-500" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} />
-                 <button className="w-full py-6 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-500 transition-all">ENTRAR NO SISTEMA</button>
+    return (
+      <div className="min-h-screen bg-[#040812] flex items-center justify-center p-6 text-slate-200" style={{background: 'radial-gradient(ellipse at 30% 50%, #0d1829 0%, #040812 60%)'}}>
+        <div className="w-full max-w-md">
+
+          {/* LOGO */}
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl mb-6">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center"><ShieldCheck size={16} className="text-white"/></div>
+              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Backoffice Mestre</span>
+            </div>
+            <h1 className="text-4xl font-black text-white italic tracking-tighter">
+              {loginMode === 'pending' ? 'Aguardando...' : loginMode === 'register' ? 'Solicitar Acesso' : 'Bem-vindo de volta'}
+            </h1>
+            <p className="text-slate-600 text-xs mt-2 font-black uppercase tracking-widest">
+              {loginMode === 'pending' ? 'Sua solicitação foi enviada' : loginMode === 'register' ? 'Preencha os dados para solicitar entrada' : 'Acesso restrito — equipe interna'}
+            </p>
+          </div>
+
+          <div className="bg-[#0A101D] border border-white/5 p-8 rounded-[2rem] shadow-2xl">
+
+            {/* MODO: PENDENTE */}
+            {loginMode === 'pending' && (
+              <div className="text-center space-y-6 py-4">
+                <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto animate-pulse">
+                  <span className="text-2xl">⏳</span>
+                </div>
+                <div>
+                  <p className="text-white font-black text-sm mb-2">Solicitação Enviada!</p>
+                  <p className="text-slate-500 text-xs">O administrador vai revisar seu pedido e liberar seu acesso em breve.</p>
+                  <p className="text-slate-700 text-[10px] mt-2 font-black uppercase tracking-widest">{loginEmail}</p>
+                </div>
+                <button onClick={() => { setLoginMode('login'); setLoginEmail(''); setLoginNome(''); }} className="text-[10px] font-black text-slate-600 hover:text-white transition-colors uppercase tracking-widest">
+                  Tentar com outro e-mail
+                </button>
+              </div>
+            )}
+
+            {/* MODO: LOGIN */}
+            {loginMode === 'login' && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">E-mail</label>
+                  <input type="email" placeholder="seu@email.com" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} autoFocus/>
+                </div>
+                <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-black rounded-xl shadow-xl hover:bg-indigo-500 transition-all text-sm uppercase tracking-widest">ENTRAR</button>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"/></div>
+                  <div className="relative flex justify-center"><span className="bg-[#0A101D] px-4 text-[9px] text-slate-700 uppercase tracking-widest font-black">ou</span></div>
+                </div>
+                <button type="button" onClick={() => setLoginMode('register')} className="w-full py-3 bg-white/5 border border-white/10 text-slate-400 font-black rounded-xl hover:bg-white/10 hover:text-white transition-all text-[10px] uppercase tracking-widest">
+                  Solicitar Acesso →
+                </button>
               </form>
-           </div>
+            )}
+
+            {/* MODO: REGISTRO */}
+            {loginMode === 'register' && (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">Seu Nome Completo</label>
+                  <input type="text" placeholder="Ex: Maria Silva" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginNome} onChange={e => setLoginNome(e.target.value)} autoFocus/>
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">E-mail Profissional</label>
+                  <input type="email" placeholder="seu@email.com" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}/>
+                </div>
+                <button type="submit" className="w-full py-3 bg-orange-600 text-white font-black rounded-xl shadow-xl hover:bg-orange-500 transition-all text-sm uppercase tracking-widest">SOLICITAR ACESSO</button>
+                <button type="button" onClick={() => setLoginMode('login')} className="w-full text-center text-[9px] font-black text-slate-700 hover:text-slate-400 transition-colors uppercase tracking-widest">
+                  ← Voltar para o Login
+                </button>
+              </form>
+            )}
+          </div>
+
+          <p className="text-center text-[9px] text-slate-800 mt-6 font-black uppercase tracking-widest">Onety © 2025 — Acesso restrito</p>
         </div>
-     );
+      </div>
+    );
   }
 
   return (
