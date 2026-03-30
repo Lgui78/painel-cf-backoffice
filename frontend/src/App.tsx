@@ -131,12 +131,18 @@ export default function App() {
             statusCompetencia: 'Pendente', faseOnbDP: r['ONBOARDING'] || 'Pendente',
             qtdFuncionarios: r['FUNCIONARIOS'] || '0',
             qtdProlabore: r['PROLABORE'] || '0',
-            isOnboarding: !!r['ONBOARDING'],
+            isOnboarding: r['ONBOARDING'] !== undefined ? !!r['ONBOARDING'] : true, 
             arquivada: false
          }));
-         await supabase.from('backoffice_empresas').insert(toInsert);
-         fetchData();
-         alert("Esteira Carregada!");
+         const { data: inserted, error: insertError } = await supabase.from('backoffice_empresas').insert(toInsert).select();
+         
+         if (insertError) {
+            console.error(insertError);
+            alert("ERRO NA IMPORTAÇÃO! Verifique os dados da planilha.");
+         } else {
+            fetchData();
+            alert(`SUCESSO MESTRE! A Esteira foi alimentada com ${inserted?.length || 0} novas empresas no Onboarding! 🔥`);
+         }
       }
     });
   };
