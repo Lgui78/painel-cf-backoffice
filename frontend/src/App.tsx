@@ -125,17 +125,20 @@ export default function App() {
          const rawData = results.data as any[];
          
          const toInsert = rawData.map(r => {
-            // Normalizar as chaves para maiúsculas pra não ter erro na hora de achar a coluna
+            // Normalizar as chaves para maiúsculas e remover caracteres invisíveis (BOM do Excel)
             const normalizedRow: any = {};
             Object.keys(r).forEach(k => {
-               if (k) normalizedRow[k.trim().toUpperCase()] = r[k];
+               if (k) {
+                  const cleanKey = k.replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toUpperCase();
+                  normalizedRow[cleanKey] = r[k];
+               }
             });
 
             return {
-               nome: normalizedRow['EMPRESA'] || normalizedRow['RAZAO SOCIAL'] || normalizedRow['RAZÃO SOCIAL'] || normalizedRow['CLIENTE'] || 'Empresa Nova (Sem Nome)',
+               nome: normalizedRow['EMPRESA'] || normalizedRow['RAZAO SOCIAL'] || normalizedRow['RAZÃO SOCIAL'] || normalizedRow['CLIENTE'] || normalizedRow['NOME'] || normalizedRow['NOME FANTASIA'] || 'Empresa Nova (Sem Nome)',
                cnpj: normalizedRow['CNPJ'] || '',
                franquia: normalizedRow['FRANQUIA'] || normalizedRow['GRUPO'] || 'Indefinida',
-               responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || 'Sem Analista',
+               responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || normalizedRow['ATENDENTE'] || 'Sem Analista',
                tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
                sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
                qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['QTDFUNCIONARIOS'] || '',
