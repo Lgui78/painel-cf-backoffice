@@ -386,26 +386,26 @@ export default function App() {
       </aside>
 
       <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-4 h-screen flex flex-col`}>
-        <header className="flex justify-between items-start mb-8 shrink-0">
-          <div className="space-y-4">
-            <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
-            <div className="flex gap-4">
-                <button onClick={() => setIsOnboardingTab(false)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
-                <button onClick={() => setIsOnboardingTab(true)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
+        <header className="flex justify-between items-center mb-2 shrink-0">
+          <div className="flex items-center gap-6">
+            <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
+            <div className="flex gap-2">
+                <button onClick={() => setIsOnboardingTab(false)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
+                <button onClick={() => setIsOnboardingTab(true)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
-             <div className="flex gap-6 items-center bg-[#0A101D] p-3 rounded-2xl border border-white/5">
-                 <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
-                    <input type="radio" checked={isGlobalUpload} onChange={() => setIsGlobalUpload(true)} className="accent-indigo-500 w-4 h-4"/>
-                    COMPARTILHAR GLOBALMENTE
+          <div className="flex items-center gap-3">
+             <div className="flex gap-4 items-center bg-[#0A101D] px-3 py-2 rounded-xl border border-white/5">
+                 <label className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
+                    <input type="radio" checked={isGlobalUpload} onChange={() => setIsGlobalUpload(true)} className="accent-indigo-500 w-3 h-3"/>
+                    GLOBAL
                  </label>
-                 <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
-                    <input type="radio" checked={!isGlobalUpload} onChange={() => setIsGlobalUpload(false)} className="accent-indigo-500 w-4 h-4"/>
-                    APENAS NESTE MÓDULO
+                 <label className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
+                    <input type="radio" checked={!isGlobalUpload} onChange={() => setIsGlobalUpload(false)} className="accent-indigo-500 w-3 h-3"/>
+                    APENAS AQUI
                  </label>
              </div>
-             <label className="bg-indigo-600 text-white px-8 py-4 rounded-3xl text-xs font-black uppercase flex items-center gap-4 shadow-indigo-500/20 shadow-2xl transition-all active:scale-95 cursor-pointer hover:bg-indigo-500"><Upload size={20}/> IMPORTAR ESTEIRA COMPLETA<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
+             <label className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase flex items-center gap-2 shadow-indigo-500/20 shadow-lg transition-all active:scale-95 cursor-pointer hover:bg-indigo-500"><Upload size={13}/> IMPORTAR CSV<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
           </div>
         </header>
 
@@ -429,20 +429,20 @@ export default function App() {
                        )}
                     </div>
                  ))}
-              </div>
-           </div>
-        ) : (
-           <>
-              <div className="flex gap-4 mb-6 shrink-0">
-                <div className="relative flex-1 group"><Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-indigo-400 transition-colors" size={20}/><input type="text" placeholder="Pesquisar Empresa, Grupo ou CNPJ..." className="w-full pl-16 pr-6 py-4 bg-[#0A101D] border border-white/5 rounded-[1.5rem] text-xs text-white font-black outline-none focus:border-indigo-500/30 transition-all placeholder-slate-800" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
-                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[1.5rem] px-6 py-4 text-[10px] font-black outline-none min-w-[220px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
-                    <option value="Todas">FILTRAR GRUPO</option>
-                    {Array.from(new Set(empresas.map(e => e.franquia))).sort().map(f => <option key={f} value={f}>{f?.toUpperCase()}</option>)}
-                </select>
-                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[1.5rem] px-6 py-4 text-[10px] font-black outline-none min-w-[220px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
-                    <option value="Todos">FILTRAR ANALISTA</option>
-                    {Array.from(new Set(empresas.map(e => e.responsavel))).sort().map(r => <option key={r} value={r}>{r?.toUpperCase()}</option>)}
-                </select>
+               </div>
+            </div>
+         ) : (
+            <>
+               <div className="flex gap-2 mb-2 shrink-0">
+                 <div className="relative flex-1 group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-indigo-400 transition-colors" size={14}/><input type="text" placeholder="Pesquisar Empresa, Grupo ou CNPJ..." className="w-full pl-10 pr-4 py-2 bg-[#0A101D] border border-white/5 rounded-xl text-[10px] text-white font-black outline-none focus:border-indigo-500/30 transition-all placeholder-slate-800" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
+                 <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-xl px-4 py-2 text-[9px] font-black outline-none min-w-[160px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
+                     <option value="Todas">FILTRAR GRUPO</option>
+                     {Array.from(new Set(empresas.map(e => e.franquia))).sort().map(f => <option key={f} value={f}>{f?.toUpperCase()}</option>)}
+                 </select>
+                 <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-xl px-4 py-2 text-[9px] font-black outline-none min-w-[160px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
+                     <option value="Todos">FILTRAR ANALISTA</option>
+                     {Array.from(new Set(empresas.map(e => e.responsavel))).sort().map(r => <option key={r} value={r}>{r?.toUpperCase()}</option>)}
+                 </select>
               </div>
 
               <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 min-h-0 shadow-2xl relative">
