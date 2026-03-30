@@ -127,13 +127,16 @@ export default function App() {
             tributacao: r['TRIBUTACAO'] || 'Simples Nacional',
             sistemaBase: r['SISTEMA'] || 'Domínio Base 1',
             responsavel: r['RESPONSAVEL'] || 'Indefinido',
-            bkoDP: true, bkoFiscal: true, bkoContabil: true,
-            statusCompetencia: 'Pendente', faseOnbDP: r['ONBOARDING'] || 'Pendente',
+            bkoDP: visaoAtiva === 'DP' || visaoAtiva === 'Geral', 
+            bkoFiscal: visaoAtiva === 'Fiscal' || visaoAtiva === 'Geral', 
+            bkoContabil: visaoAtiva === 'Contábil' || visaoAtiva === 'Geral',
+            statusCompetencia: 'Pendente', faseOnbDP: 'Pendente',
             qtdFuncionarios: r['FUNCIONARIOS'] || '0',
             qtdProlabore: r['PROLABORE'] || '0',
-            isOnboarding: r['ONBOARDING'] !== undefined ? !!r['ONBOARDING'] : true, 
+            isOnboarding: isOnboardingTab, // Herda do contexto que o mestre está visualizando
             arquivada: false
          }));
+
          const { data: inserted, error: insertError } = await supabase.from('backoffice_empresas').insert(toInsert).select();
          
          if (insertError) {
@@ -141,7 +144,7 @@ export default function App() {
             alert("ERRO NA IMPORTAÇÃO! Verifique os dados da planilha.");
          } else {
             fetchData();
-            alert(`SUCESSO MESTRE! A Esteira foi alimentada com ${inserted?.length || 0} novas empresas no Onboarding! 🔥`);
+            alert(`SUCESSO MESTRE! Foram carregadas ${inserted?.length || 0} empresas na visualização ${visaoAtiva} / ${isOnboardingTab ? 'ONBOARDING' : 'MENSAL'} 🔥`);
          }
       }
     });
