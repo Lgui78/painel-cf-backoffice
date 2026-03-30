@@ -126,10 +126,7 @@ export default function App() {
             franquia: r['FRANQUIA'] || 'Própria',
             tributacao: r['TRIBUTACAO'] || 'Simples Nacional',
             sistemaBase: r['SISTEMA'] || 'Domínio Base 1',
-            responsavel: r['RESPONSAVEL'] || 'Indefinido',
-            statusCompetencia: 'Pendente', 
-            faseOnbDP: 'Pendente',
-            isOnboarding: isOnboardingTab
+            responsavel: r['RESPONSAVEL'] || 'Indefinido'
          }));
 
          const { data: inserted, error: insertError } = await supabase
