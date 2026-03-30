@@ -3,11 +3,11 @@ import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
   Users, LogOut, Globe, LayoutDashboard, Search, Upload,
-  Pencil, Menu, FileText
+  Pencil, Menu, FileText, Archive, ShieldAlert, CheckCircle2, MessageSquare, X
 } from 'lucide-react';
 
 // Tipos
-type Visao = 'Geral' | 'DP' | 'DP_Onb' | 'Fiscal' | 'Fiscal_Onb' | 'Contábil' | 'Contábil_Onb';
+type Visao = 'Geral' | 'DP' | 'DP_Onb' | 'Fiscal' | 'Fiscal_Onb' | 'Contábil' | 'Contábil_Onb' | 'Arquivo';
 
 interface Funcionario {
   id: string;
@@ -39,16 +39,11 @@ interface Empresa {
   qtdProlabore?: string;
   qtdFuncionarios?: string;
   temVariavel?: boolean;
-  temAdiantamento?: boolean;
-  temConsignado?: boolean;
-  anotacoesFiscal?: string;
+  arquivada: boolean;
+  obs_dp?: string;
+  obs_fiscal?: string;
+  obs_contabil?: string;
 }
-
-const normalizeText = (text: string) => 
-  text.trim()
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
 
 const statusOptionsDP = [
   "100% concluído", "Folha enviada/variável", "Folha enviada aguardando conferência do franqueado", 
@@ -65,18 +60,15 @@ export default function App() {
   const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
+  const [filterFranquia, setFilterFranquia] = useState('Todas');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-
-  const [novaEmpresaForm, setNovaEmpresaForm] = useState({
-     franquia: '', razaoSocial: '', cnpj: '', tributacao: 'Simples Nacional', 
-     sistemaBase: 'Alterdata Nuvem', codigoSistema: '', responsavel: ''
-  });
-
+  
   const fetchData = async () => {
     const { data: emp } = await supabase.from('backoffice_empresas').select('*').order('created_at', { ascending: false });
     if (emp) setEmpresas(emp as Empresa[]);
@@ -94,100 +86,67 @@ export default function App() {
 
   const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
     setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    if (selectedEmpresa?.id === id) setSelectedEmpresa(prev => prev ? { ...prev, ...updates } : null);
     await supabase.from('backoffice_empresas').update(updates).eq('id', id);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: 'greedy',
-      encoding: 'ISO-8859-1',
-      complete: async (results) => {
-         const rawData = results.data as any[];
-         if(rawData.length === 0) return;
-
-         const { data: currentFuncs } = await supabase.from('funcionarios').select('*');
-         const funcList = (currentFuncs || []) as Funcionario[];
-         
-         const toInsert = [];
-
-         for (const row of rawData) {
-            const keys = Object.keys(row);
-            const respKey = keys.find(k => normalizeText(k).includes('RESPONSAVEL') || normalizeText(k).includes('COLABORADOR') || normalizeText(k).includes('ANALISTA')) || keys[0];
-            const respNameFull = (row[respKey] || 'Indefinido').trim();
-            const normalized = normalizeText(respNameFull);
-
-            let func = funcList.find(f => f.nome_normalizado === normalized);
-            if (!func && normalized && normalized !== 'INDEFINIDO') {
-               const { data: newF } = await supabase.from('funcionarios').insert({ nome: respNameFull, nome_normalizado: normalized }).select().single();
-               if (newF) { func = newF as Funcionario; funcList.push(func); }
-            }
-
-            toInsert.push({
-               nome: row['EMPRESA'] || row['RAZAO SOCIAL'] || row['NOME'] || `Imp #${(Math.random()*100).toFixed(0)}`,
-               cnpj: row['CNPJ'] || '',
-               franquia: row['FRANQUIA'] || 'Própria',
-               tributacao: row['TRIBUTACAO'] || row['TIPO'] || 'Simples Nacional',
-               sistemaBase: row['SISTEMA'] || 'Alterdata',
-               responsavel: respNameFull,
-               responsavel_id: func?.id,
-               statusCompetencia: 'Pendente',
-               faseOnbDP: 'Falta Parametrizar',
-               faseOnbFiscal: 'Falta Parametrizar',
-               faseOnbContabil: 'Falta Parametrizar',
-               bkoDP: true, bkoFiscal: true, bkoContabil: true,
-               qtdFuncionarios: row['FUNCIONARIOS'] || '0',
-               qtdProlabore: row['PROLABORE'] || '0',
-               temVariavel: ['SIM', 'S', 'S/V'].includes(normalizeText(row['VARIAVEL'] || '')),
-               anotacoesFiscal: row['ANOTAÇÕES'] || ''
-            });
-         }
-
-         setFuncionarios([...funcList]);
-         const { data: inserted, error } = await supabase.from('backoffice_empresas').insert(toInsert).select();
-         if(!error && inserted) {
-            setEmpresas([...inserted, ...empresas]);
-            alert(`${inserted.length} Empresas Integradas com Sucesso!`);
-         }
-      }
-    });
-    e.target.value = '';
-  };
+  const uniqueFranquias = Array.from(new Set(empresas.map(e => e.franquia))).sort();
 
   const filtered = empresas.filter(e => {
-    const isSearchMatch = e.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          e.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          e.cnpj.includes(searchTerm);
-    const isRespMatch = filterResponsavel === 'Todos' || e.responsavel_id === filterResponsavel;
+    const matchSearch = e.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        e.cnpj.includes(searchTerm) || 
+                        e.franquia.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchResp = filterResponsavel === 'Todos' || e.responsavel_id === filterResponsavel;
+    const matchFran = filterFranquia === 'Todas' || e.franquia === filterFranquia;
     
-    // Filtragem por setor
+    if (visaoAtiva === 'Arquivo') return e.arquivada && matchSearch && matchResp && matchFran;
+    if (e.arquivada) return false;
+
     let isSectorMatch = true;
     if (visaoAtiva.startsWith('DP')) isSectorMatch = e.bkoDP;
     else if (visaoAtiva.startsWith('Fiscal')) isSectorMatch = e.bkoFiscal;
     else if (visaoAtiva.startsWith('Contábil')) isSectorMatch = e.bkoContabil;
 
-    return isSearchMatch && isRespMatch && isSectorMatch;
+    return matchSearch && matchResp && matchFran && isSectorMatch;
   });
 
   const getStatusColor = (val: string) => {
     if (val === '100% concluído' || val === 'Concluído') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-    if (val.includes('Aguardando') || val.includes('Pendente')) return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-    return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+    if (val.includes('Aguardando') || val.includes('Pendente') || val.includes('Sem')) return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true, skipEmptyLines: 'greedy', encoding: 'ISO-8859-1',
+      complete: async (results) => {
+         const rawData = results.data as any[];
+         const { data: inserted } = await supabase.from('backoffice_empresas').insert(rawData.map(r => ({
+            nome: r['EMPRESA'] || r['RAZAO SOCIAL'] || 'Empresa Nova',
+            cnpj: r['CNPJ'] || '',
+            franquia: r['FRANQUIA'] || 'Própria',
+            tributacao: r['TRIBUTACAO'] || 'Simples Nacional',
+            sistemaBase: r['SISTEMA'] || 'Nuvem',
+            responsavel: r['RESPONSAVEL'] || 'Indefinido',
+            bkoDP: true, bkoFiscal: true, bkoContabil: true,
+            statusCompetencia: 'Pendente', faseOnbDP: 'Pendente', faseOnbFiscal: 'Pendente', faseOnbContabil: 'Pendente'
+         }))).select();
+         if(inserted) fetchData();
+      }
+    });
   };
 
   if (!isLoggedIn) {
      return (
        <div className="min-h-screen bg-[#040812] flex items-center justify-center p-4">
          <div className="bg-[#0A101D] border border-white/10 rounded-[2rem] p-10 w-full max-w-sm shadow-2xl">
-           <h1 className="text-2xl font-black text-center mb-8 text-white italic tracking-tighter">CF BACKOFFICE</h1>
-           <form onSubmit={(e) => { e.preventDefault(); if(loginEmail === 'admin' && loginPassword === 'teste1234'){ localStorage.setItem('cf_auth', 'true'); setIsLoggedIn(true); } else setLoginError('Login Inválido.'); }} className="space-y-4">
-             <input type="text" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Usuário" />
-             <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Senha" />
-             <button type="submit" className="w-full bg-indigo-600 py-4 rounded-xl font-bold text-white uppercase tracking-widest text-xs">Acessar Painel</button>
-             {loginError && <p className="text-rose-400 text-center font-bold text-[10px] uppercase">! {loginError}</p>}
+           <h1 className="text-2xl font-black text-center mb-8 text-white italic tracking-tighter uppercase">CF BACKOFFICE</h1>
+           <form onSubmit={(e) => { e.preventDefault(); if(loginEmail === 'admin' && loginPassword === 'teste1234'){ localStorage.setItem('cf_auth', 'true'); setIsLoggedIn(true); } }} className="space-y-4">
+             <input type="text" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Usuário" />
+             <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white outline-none" placeholder="Senha" />
+             <button type="submit" className="w-full bg-indigo-600 py-4 rounded-xl font-bold text-white uppercase tracking-widest text-[10px]">Acessar Sistema</button>
            </form>
          </div>
        </div>
@@ -196,31 +155,34 @@ export default function App() {
 
   const baseSector = visaoAtiva.split('_')[0];
   const isOnbView = visaoAtiva.includes('_Onb');
-  const currentStatusOptions = baseSector === 'DP' ? statusOptionsDP : statusOptionsFiscalContabil;
 
   return (
-    <div className="min-h-screen bg-[#040812] flex text-slate-200 overflow-hidden">
-      <aside className={`flex h-screen fixed z-40 transition-all duration-300 ${isSidebarOpen ? 'w-[280px]' : 'w-[70px]'} bg-[#0A101D] border-r border-white/5`}>
-        <div className="w-[70px] flex flex-col items-center py-6 gap-6 h-full shrink-0">
-           <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center cursor-pointer shadow-lg shadow-indigo-500/20"><Menu size={18}/></div>
-           {['Geral', 'DP', 'Fiscal', 'Contábil'].map(v => (
-             <button key={v} onClick={() => setVisaoAtiva(v as Visao)} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${visaoAtiva.startsWith(v) ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-white/5'}`}>
-               {v === 'Geral' ? <Globe size={20}/> : v === 'DP' ? <Users size={20}/> : v === 'Fiscal' ? <FileText size={20}/> : <LayoutDashboard size={20}/>}
-             </button>
-           ))}
-           <button onClick={() => { localStorage.removeItem('cf_auth'); setIsLoggedIn(false); }} className="mt-auto mb-6 text-rose-500/50 hover:text-rose-500"><LogOut size={20}/></button>
+    <div className="min-h-screen bg-[#040812] flex text-slate-200 overflow-hidden font-sans">
+      {/* Sidebar de Ícones */}
+      <aside className={`flex h-screen fixed z-50 transition-all duration-500 ${isSidebarOpen ? 'w-[280px]' : 'w-[80px]'} bg-[#0A101D] border-r border-white/5 shadow-2xl backdrop-blur-3xl`}>
+        <div className="w-[80px] flex flex-col items-center py-8 gap-8 h-full shrink-0 border-r border-white/5">
+           <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer shadow-indigo-500/40 shadow-lg hover:scale-110 transition-transform"><Menu size={20} className="text-white"/></div>
+           <nav className="flex flex-col gap-4">
+             {['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo'].map(v => (
+               <button key={v} onClick={() => setVisaoAtiva(v as Visao)} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${visaoAtiva.startsWith(v) ? 'bg-white/10 text-white border border-white/10 shadow-xl' : 'text-slate-600 hover:bg-white/5'}`}>
+                 {v === 'Geral' ? <Globe size={20}/> : v === 'DP' ? <Users size={20}/> : v === 'Fiscal' ? <FileText size={20}/> : v === 'Arquivo' ? <Archive size={20}/> : <LayoutDashboard size={20}/>}
+               </button>
+             ))}
+           </nav>
+           <button onClick={() => { localStorage.removeItem('cf_auth'); setIsLoggedIn(false); }} className="mt-auto mb-8 text-rose-500/40 hover:text-rose-500 transition-colors"><LogOut size={20}/></button>
         </div>
+        
         {isSidebarOpen && (
-           <div className="flex-1 p-6 flex flex-col">
-              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mb-6">Linguagem de gestão</h3>
-              <div className="space-y-1">
-                 {['Geral', 'DP', 'Fiscal', 'Contábil'].map(m => (
-                    <div key={m} className={visaoAtiva.startsWith(m) ? 'bg-white/5 rounded-2xl pb-2' : ''}>
-                       <button onClick={() => setVisaoAtiva(m as Visao)} className={`w-full text-left p-4 rounded-xl text-xs font-bold ${visaoAtiva.startsWith(m) ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}>{m}</button>
-                       {m !== 'Geral' && visaoAtiva.startsWith(m) && (
-                          <div className="pl-6 flex flex-col gap-1">
-                             <button onClick={() => setVisaoAtiva(m as Visao)} className={`text-left p-2 text-[11px] font-medium ${visaoAtiva === m ? 'text-indigo-400' : 'text-slate-600'}`}>• {m} Mensal</button>
-                             <button onClick={() => setVisaoAtiva(`${m}_Onb` as Visao)} className={`text-left p-2 text-[11px] font-medium ${visaoAtiva === `${m}_Onb` ? 'text-indigo-400' : 'text-slate-600'}`}>• Onboarding</button>
+           <div className="flex-1 p-8 flex flex-col animate-in fade-in slide-in-from-left-4 duration-500">
+              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] mb-8">Navegação</h3>
+              <div className="space-y-4">
+                 {['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo'].map(m => (
+                    <div key={m} className="space-y-2">
+                       <button onClick={() => setVisaoAtiva(m as Visao)} className={`w-full text-left p-3 rounded-xl text-xs font-black transition-all ${visaoAtiva.startsWith(m) ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-300'}`}>{m.toUpperCase()}</button>
+                       {m !== 'Geral' && m !== 'Arquivo' && visaoAtiva.startsWith(m) && (
+                          <div className="pl-4 flex flex-col gap-1 border-l border-white/5 ml-2">
+                             <button onClick={() => setVisaoAtiva(m as Visao)} className={`text-left p-2 text-[10px] font-bold ${visaoAtiva === m ? 'text-white' : 'text-slate-600'}`}>MENSAL</button>
+                             <button onClick={() => setVisaoAtiva(`${m}_Onb` as Visao)} className={`text-left p-2 text-[10px] font-bold ${visaoAtiva === `${m}_Onb` ? 'text-white' : 'text-slate-600'}`}>ONBOARDING</button>
                           </div>
                        )}
                     </div>
@@ -230,71 +192,86 @@ export default function App() {
         )}
       </aside>
 
-      <main className={`flex-1 transition-all ${isSidebarOpen ? 'ml-[280px]' : 'ml-[70px]'} p-8 h-screen flex flex-col`}>
-        <header className="flex justify-between items-center mb-8 shrink-0">
-          <div><h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">{visaoAtiva.replace('_Onb', ' ONBOARDING')}</h2><p className="text-xs text-slate-500 font-bold uppercase mt-1 tracking-widest">Controle de Fluxo Operacional</p></div>
-          <div className="flex gap-3">
-             <button onClick={() => setIsModalOpen(true)} className="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl text-[11px] font-black uppercase">+ NOVA EMPRESA</button>
-             <label className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[11px] font-black uppercase cursor-pointer flex items-center gap-2 shadow-xl shadow-indigo-500/20"><Upload size={14}/> IMPORTAR PLANILHA<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
+      {/* Main Content */}
+      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[280px]' : 'ml-[80px]'} p-10 h-screen flex flex-col relative`}>
+        <header className="flex justify-between items-end mb-10 shrink-0">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+              <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('_Onb', ' / ONB').replace('Arquivo', 'OFF-BOARDING')}</h2>
+            </div>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em]">Controle de Fluxo Operacional • Onety</p>
+          </div>
+          <div className="flex gap-4">
+             <label className="bg-white/5 border border-white/10 text-white px-8 py-4 rounded-[1.2rem] text-[10px] font-black uppercase cursor-pointer flex items-center gap-3 hover:bg-white/10 transition-all shadow-lg active:scale-95"><Upload size={16} className="text-indigo-400"/> IMPORTAR PLANILHA<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
           </div>
         </header>
 
-        <div className="bg-[#0A101D] rounded-[2.5rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-white/5 flex gap-4 bg-[#0D1424]">
-             <div className="relative flex-1 max-w-md"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16}/><input type="text" placeholder="Pesquisar por Empresa, CNPJ ou Analista..." className="w-full pl-11 pr-5 py-3.5 bg-[#131B2F] border border-white/5 rounded-2xl text-xs text-white outline-none focus:border-indigo-500/50 transition-all font-medium" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
-             <select className="bg-[#131B2F] border border-white/5 text-slate-400 rounded-2xl px-6 py-3.5 text-xs font-bold outline-none" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
-                <option value="Todos">TODOS OS ANALISTAS</option>
-                {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome.toUpperCase()}</option>)}
-             </select>
-          </div>
+        {/* Filters Top Bar */}
+        <div className="flex gap-4 mb-6 shrink-0">
+           <div className="relative flex-1 group"><Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-400 transition-colors" size={16}/><input type="text" placeholder="Razão Social, CNPJ ou Franquia..." className="w-full pl-14 pr-6 py-4 bg-[#0A101D] border border-white/5 rounded-2xl text-[11px] text-white outline-none focus:border-indigo-500/30 transition-all font-bold placeholder-slate-700" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
+           <select className="bg-[#0A101D] border border-white/5 text-slate-400 rounded-2xl px-6 py-4 text-[10px] font-black outline-none focus:border-indigo-500/30 min-w-[200px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
+              <option value="Todas">FILTRAR FRANQUIA</option>
+              {uniqueFranquias.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
+           </select>
+           <select className="bg-[#0A101D] border border-white/5 text-slate-400 rounded-2xl px-6 py-4 text-[10px] font-black outline-none focus:border-indigo-500/30 min-w-[200px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
+              <option value="Todos">FILTRAR ANALISTA</option>
+              {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome.toUpperCase()}</option>)}
+           </select>
+        </div>
 
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-[#0D1424] sticky top-0 z-10">
-                <tr className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em] border-b border-white/5">
-                  <th className="px-8 py-5">SITUAÇÃO</th>
-                  <th className="px-6 py-5">NOME EMPRESA</th>
-                  <th className="px-6 py-5">CNPJ</th>
-                  <th className="px-6 py-5">FRANQUIA</th>
-                  <th className="px-6 py-5">ANALISTA RESPONSÁVEL</th>
-                  <th className="px-6 py-5">TRIBUTAÇÃO</th>
-                  <th className="px-6 py-5">SISTEMA</th>
-                  {baseSector === 'DP' && <th className="px-6 py-5">FOLHA / VAR / ADIA</th>}
-                  <th className="px-8 py-5 text-right">OPÇÕES</th>
+        {/* Tabela com Scroll */}
+        <div className="bg-[#0A101D]/50 rounded-[2.5rem] border border-white/5 flex flex-col flex-1 overflow-hidden backdrop-blur-md shadow-inner">
+          <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            <table className="w-full text-left border-separate border-spacing-0">
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-[#0D1424] text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
+                  <th className="px-10 py-6 border-b border-white/5 backdrop-blur-xl">SITUAÇÃO</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">RAZÃO SOCIAL</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">CNPJ</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">FRANQUIA</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">ANALISTA RESPONSÁVEL</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">TRIBUTAÇÃO</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">SISTEMA</th>
+                  <th className="px-8 py-6 border-b border-white/5 backdrop-blur-xl">STATUS</th>
+                  <th className="px-10 py-6 border-b border-white/5 text-right backdrop-blur-xl">AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filtered.map(emp => (
-                  <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-8 py-4">
+                  <tr key={emp.id} className={`hover:bg-white/[0.03] transition-all group ${emp.inadimplente ? 'border-l-4 border-rose-500' : ''}`}>
+                    <td className="px-10 py-5">
                        <select 
                          value={isOnbView ? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia} 
-                         onChange={(e) => {
-                            const up: any = {};
-                            if(isOnbView) { if(baseSector==='DP') up.faseOnbDP=e.target.value; else if(baseSector==='Fiscal') up.faseOnbFiscal=e.target.value; else up.faseOnbContabil=e.target.value; }
-                            else up.statusCompetencia = e.target.value;
-                            updateEmpresaDirectly(emp.id, up);
-                         }}
-                         className={`border-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase outline-none transition-all cursor-pointer ${getStatusColor(isOnbView? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
+                         onChange={(e) => updateEmpresaDirectly(emp.id, isOnbView ? (baseSector==='DP'?{faseOnbDP:e.target.value}:baseSector==='Fiscal'?{faseOnbFiscal:e.target.value}:{faseOnbContabil:e.target.value}) : {statusCompetencia: e.target.value})}
+                         className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase outline-none cursor-pointer border-none shadow-sm ${getStatusColor(isOnbView? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
                        >
-                          {currentStatusOptions.map(opt => <option key={opt} value={opt} className="bg-[#0A101D] text-slate-300">{opt}</option>)}
+                          {(baseSector==='DP'?statusOptionsDP:statusOptionsFiscalContabil).map(o => <option key={o} value={o} className="bg-[#0A101D]">{o}</option>)}
                        </select>
                     </td>
-                    <td className="px-6 py-4"><span className="text-xs font-bold text-slate-200 tracking-tight">{emp.nome}</span></td>
-                    <td className="px-6 py-4 font-mono text-[10px] text-slate-500">{emp.cnpj}</td>
-                    <td className="px-6 py-4"><span className="text-[10px] font-bold text-slate-400 bg-white/5 px-2.5 py-1 rounded-lg">{emp.franquia.toUpperCase()}</span></td>
-                    <td className="px-6 py-4"><span className="text-[10px] font-black text-indigo-400">{emp.responsavel.toUpperCase()}</span></td>
-                    <td className="px-6 py-4 text-[10px] text-slate-500 font-medium">{emp.tributacao}</td>
-                    <td className="px-6 py-4 text-[10px] text-slate-500 font-medium">{emp.sistemaBase}</td>
-                    {baseSector === 'DP' && (
-                       <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                             <div className={`w-8 h-4 rounded text-[8px] font-bold flex items-center justify-center ${emp.qtdFuncionarios !== '0' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-white/5 text-slate-700'}`}>{emp.qtdFuncionarios}F</div>
-                             <div className={`w-8 h-4 rounded text-[8px] font-bold flex items-center justify-center ${emp.temVariavel ? 'bg-orange-500/10 text-orange-400' : 'bg-white/5 text-slate-700'}`}>VAR</div>
-                          </div>
-                       </td>
-                    )}
-                    <td className="px-8 py-4 text-right"><button className="p-2 text-slate-600 hover:text-indigo-400 transition-all opacity-0 group-hover:opacity-100"><Pencil size={14}/></button></td>
+                    <td onClick={() => { setSelectedEmpresa(emp); setIsCommentsOpen(true); }} className="px-8 py-5 cursor-pointer">
+                       <div className="flex flex-col">
+                          <span className="text-[11px] font-black text-white tracking-tight group-hover:text-indigo-400 transition-colors uppercase">{emp.nome}</span>
+                          {emp.inadimplente && <span className="text-[8px] text-rose-500 font-black uppercase mt-1 flex items-center gap-1"><ShieldAlert size={10}/> Empresa com Pendência Financeira</span>}
+                       </div>
+                    </td>
+                    <td className="px-8 py-5 font-mono text-[10px] text-slate-500">{emp.cnpj || '---'}</td>
+                    <td className="px-8 py-5"><span className="text-[10px] font-black text-slate-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">{emp.franquia.toUpperCase()}</span></td>
+                    <td className="px-8 py-5"><span className="text-[10px] font-black text-indigo-400 hover:underline cursor-pointer">{emp.responsavel.toUpperCase()}</span></td>
+                    <td className="px-8 py-5 text-[10px] text-slate-500 font-bold uppercase">{emp.tributacao}</td>
+                    <td className="px-8 py-5 text-[10px] text-slate-400 font-bold uppercase italic">{emp.sistemaBase}</td>
+                    <td className="px-8 py-5">
+                       <div className="flex gap-2">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${emp.bkoDP ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 text-slate-800'}`} title="DP"><Users size={12}/></div>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${emp.bkoFiscal ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-slate-800'}`} title="Fiscal"><FileText size={12}/></div>
+                       </div>
+                    </td>
+                    <td className="px-10 py-5 text-right">
+                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"><Pencil size={14}/></button>
+                          <button onClick={() => updateEmpresaDirectly(emp.id, { arquivada: !emp.arquivada })} className={`p-3 rounded-xl transition-all ${emp.arquivada ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-slate-400 hover:bg-rose-500/20 hover:text-rose-400'}`} title={emp.arquivada ? 'Ativar' : 'Arquivar'}><Archive size={14}/></button>
+                       </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -303,24 +280,56 @@ export default function App() {
         </div>
       </main>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
-           <div className="bg-[#0A101D] border border-white/10 rounded-[3rem] w-full max-w-sm p-12 shadow-2xl relative">
-              <h3 className="text-white text-xl font-black mb-10 tracking-widest text-center uppercase italic">Nova Empresa</h3>
-              <div className="space-y-5">
-                 <input className="w-full bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-xs text-white uppercase placeholder-slate-600" placeholder="Razão Social" value={novaEmpresaForm.razaoSocial} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, razaoSocial:e.target.value})} />
-                 <input className="w-full bg-[#131B2F] border border-white/5 rounded-2xl p-4 text-xs text-white placeholder-slate-600" placeholder="CNPJ" value={novaEmpresaForm.cnpj} onChange={e=>setNovaEmpresaForm({...novaEmpresaForm, cnpj:e.target.value})} />
-                 <div className="flex gap-4 pt-6">
-                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-500 font-bold uppercase text-[9px]">Cancelar</button>
-                    <button onClick={async () => {
-                       const payload = { ...novaEmpresaForm, nome: novaEmpresaForm.razaoSocial, statusCompetencia: 'Pendente', faseOnbDP: 'Falta Parametrizar', faseOnbFiscal: 'Falta Parametrizar', faseOnbContabil: 'Falta Parametrizar', bkoDP: true, bkoFiscal: true, bkoContabil: true, atividade: 'Serviço', responsavel: 'Lançamento Manual' };
-                       const { data } = await supabase.from('backoffice_empresas').insert([payload]).select().single();
-                       if(data) { setEmpresas([data as Empresa, ...empresas]); setIsModalOpen(false); }
-                    }} className="flex-1 py-4 bg-indigo-600 rounded-2xl text-white font-black uppercase text-[10px]">Ativar Trilha</button>
-                 </div>
-              </div>
-           </div>
-        </div>
+      {/* Painel lateral de Comentários / Notion Style */}
+      {isCommentsOpen && selectedEmpresa && (
+         <div className="fixed inset-0 z-[100] flex justify-end">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsCommentsOpen(false)}></div>
+            <div className="relative w-full max-w-xl bg-[#0D1424] h-full shadow-2xl border-l border-white/10 p-10 flex flex-col animate-in slide-in-from-right duration-500">
+               <button onClick={() => setIsCommentsOpen(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X size={24}/></button>
+               <h2 className="text-2xl font-black text-white italic mb-2 uppercase tracking-tighter">{selectedEmpresa.nome}</h2>
+               <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-10">Mural de Anotações • Notion Sync</p>
+               
+               <div className="flex gap-4 p-1 bg-black/20 rounded-2xl mb-8">
+                  {['DP', 'Fiscal', 'Contábil'].map(tab => (
+                     <button key={tab} className="flex-1 py-3 text-[10px] font-black uppercase rounded-xl hover:bg-white/5 transition-all text-slate-500">ANOTAÇÕES {tab}</button>
+                  ))}
+               </div>
+
+               <div className="flex-1 bg-white/5 rounded-3xl p-8 overflow-auto border border-white/5">
+                  <div className="space-y-4">
+                     <p className="text-xs text-slate-400 leading-relaxed italic">"Nenhuma anotação estratégica encontrada para este setor. Use este espaço para documentar processos, problemas e particularidades da franquia."</p>
+                  </div>
+               </div>
+               
+               <div className="mt-8 flex gap-4">
+                  <input type="text" placeholder="Escreva algo importante..." className="flex-1 bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-white outline-none focus:border-indigo-500/30 font-bold"/>
+                  <button className="bg-indigo-600 px-8 rounded-2xl text-[10px] font-black text-white uppercase">Salvar</button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* Modal de Edição */}
+      {isEditModalOpen && selectedEmpresa && (
+         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80">
+            <div className="bg-[#131B2F] border border-white/10 rounded-[3rem] w-full max-w-2xl p-12 shadow-2xl overflow-auto max-h-[90vh]">
+               <h3 className="text-2xl font-black text-white italic mb-10 text-center uppercase tracking-tighter">Editar Empresa</h3>
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 ml-2 uppercase">Razão Social</label><input className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-white uppercase font-bold" value={selectedEmpresa.nome} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {nome: e.target.value})}/></div>
+                  <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 ml-2 uppercase">CNPJ</label><input className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-white font-bold" value={selectedEmpresa.cnpj} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {cnpj: e.target.value})}/></div>
+                  <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 ml-2 uppercase">Franquia</label><input className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-white uppercase font-bold" value={selectedEmpresa.franquia} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {franquia: e.target.value})}/></div>
+                  <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 ml-2 uppercase">Sistema Base</label><input className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-white uppercase font-bold" value={selectedEmpresa.sistemaBase} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {sistemaBase: e.target.value})}/></div>
+               </div>
+               <div className="flex gap-4 mt-8 flex-wrap">
+                  <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { inadimplente: !selectedEmpresa.inadimplente })} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 ${selectedEmpresa.inadimplente ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-500'}`}><ShieldAlert size={14}/> {selectedEmpresa.inadimplente ? 'BLOQUEIO FINANCEIRO ATIVO' : 'SINALIZAR PENDÊNCIA'}</button>
+                  <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { bkoDP: !selectedEmpresa.bkoDP })} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase ${selectedEmpresa.bkoDP ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-500'}`}>DP</button>
+                  <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { bkoFiscal: !selectedEmpresa.bkoFiscal })} className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase ${selectedEmpresa.bkoFiscal ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-500'}`}>FISCAL</button>
+               </div>
+               <div className="flex gap-4 mt-12">
+                  <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-5 bg-indigo-600 rounded-3xl text-white font-black uppercase text-xs shadow-xl shadow-indigo-500/20">Finalizar Edição</button>
+               </div>
+            </div>
+         </div>
       )}
     </div>
   );
