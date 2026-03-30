@@ -9,11 +9,6 @@ import {
 // Tipos
 type Visao = 'Geral' | 'DP' | 'DP_Onb' | 'Fiscal' | 'Fiscal_Onb' | 'Contábil' | 'Contábil_Onb' | 'Arquivo' | 'Usuarios';
 
-interface Funcionario {
-  id: string;
-  nome: string;
-}
-
 interface UserProfile {
   id: string;
   email: string;
@@ -66,7 +61,6 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
   const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,8 +80,6 @@ export default function App() {
     }
     const { data: emp } = await query.order('created_at', { ascending: false });
     if (emp) setEmpresas(emp as Empresa[]);
-    const { data: func } = await supabase.from('funcionarios').select('*');
-    if (func) setFuncionarios(func as Funcionario[]);
     if (currentUser?.role === 'admin') {
        const { data: profs } = await supabase.from('profiles').select('*');
        if (profs) setAllProfiles(profs as UserProfile[]);
