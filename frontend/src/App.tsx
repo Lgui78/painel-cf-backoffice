@@ -385,7 +385,7 @@ export default function App() {
         )}
       </aside>
 
-      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-4 h-screen flex flex-col`}>
+      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-4 h-screen overflow-hidden flex flex-col`}>
         <header className="flex justify-between items-center mb-2 shrink-0">
           <div className="flex items-center gap-6">
             <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
@@ -445,8 +445,8 @@ export default function App() {
                  </select>
               </div>
 
-              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 min-h-0 shadow-2xl relative">
-                <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto pb-4 px-2 custom-scrollbar">
+              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 min-h-0 shadow-2xl w-full">
+                <div className="flex-1 min-h-0 overflow-x-scroll overflow-y-scroll pb-2 px-2 custom-scrollbar">
                   <div className="min-w-[1800px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
