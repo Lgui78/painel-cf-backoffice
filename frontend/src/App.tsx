@@ -44,6 +44,8 @@ interface Empresa {
   temAdiantamento?: boolean;
   arquivada: boolean;
   isOnboarding: boolean;
+  module_origin?: string;
+  is_global?: boolean;
 }
 
 const statusOptionsDP = [
@@ -70,16 +72,31 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isGlobalUpload, setIsGlobalUpload] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState('');
 
   const fetchData = async () => {
     let query = supabase.from('backoffice_empresas').select('*');
+    
+    // RBAC
     if (currentUser?.role !== 'admin' && currentUser?.responsavel_id) {
        query = query.eq('responsavel_id', currentUser.responsavel_id);
     }
-    const { data: emp } = await query.order('created_at', { ascending: false });
-    if (emp) setEmpresas(emp as Empresa[]);
+
+    // ISOLAMENTO DE MÓDULO (Nível Supabase)
+    if (visaoAtiva !== 'Geral' && visaoAtiva !== 'Usuarios' && visaoAtiva !== 'Arquivo') {
+       query = query.or(`is_global.eq.true,module_origin.eq.${visaoAtiva}`);
+    }
+
+    const { data: emp, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) {
+       console.error("Erro ao puxar dados isolados:", error);
+    } else if (emp) {
+       setEmpresas(emp as Empresa[]);
+    }
+
     if (currentUser?.role === 'admin') {
        const { data: profs } = await supabase.from('profiles').select('*');
        if (profs) setAllProfiles(profs as UserProfile[]);
@@ -97,7 +114,7 @@ export default function App() {
 
   useEffect(() => {
     if (isLoggedIn) fetchData();
-  }, [isLoggedIn, currentUser]);
+  }, [isLoggedIn, currentUser, visaoAtiva]);
 
   const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
     setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
@@ -120,12 +137,10 @@ export default function App() {
     Papa.parse(file, {
       header: true, 
       skipEmptyLines: 'greedy', 
-      // Removido o encoding ISO para forçar o sistema a aceitar o UTF-8 (acentuação perfeita) padrão
       complete: async (results) => {
          const rawData = results.data as any[];
          
          const toInsert = rawData.map(r => {
-            // Normalizar as chaves para maiúsculas e remover caracteres invisíveis (BOM do Excel)
             const normalizedRow: any = {};
             Object.keys(r).forEach(k => {
                if (k) {
@@ -142,7 +157,9 @@ export default function App() {
                tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
                sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
                qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['QTDFUNCIONARIOS'] || '',
-               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['QTDPROLABORE'] || ''
+               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['QTDPROLABORE'] || '',
+               module_origin: visaoAtiva,
+               is_global: isGlobalUpload
             };
          });
 
@@ -285,7 +302,17 @@ export default function App() {
                 <button onClick={() => setIsOnboardingTab(true)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-2xl shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
             </div>
           </div>
-          <div className="flex gap-6">
+          <div className="flex flex-col items-end gap-3">
+             <div className="flex gap-6 items-center bg-[#0A101D] p-3 rounded-2xl border border-white/5">
+                 <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
+                    <input type="radio" checked={isGlobalUpload} onChange={() => setIsGlobalUpload(true)} className="accent-indigo-500 w-4 h-4"/>
+                    COMPARTILHAR GLOBALMENTE
+                 </label>
+                 <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
+                    <input type="radio" checked={!isGlobalUpload} onChange={() => setIsGlobalUpload(false)} className="accent-indigo-500 w-4 h-4"/>
+                    APENAS NESTE MÓDULO
+                 </label>
+             </div>
              <label className="bg-indigo-600 text-white px-8 py-4 rounded-3xl text-xs font-black uppercase flex items-center gap-4 shadow-indigo-500/20 shadow-2xl transition-all active:scale-95 cursor-pointer hover:bg-indigo-500"><Upload size={20}/> IMPORTAR ESTEIRA COMPLETA<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
           </div>
         </header>
