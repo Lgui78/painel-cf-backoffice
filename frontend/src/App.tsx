@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import Papa from 'papaparse';
 import { 
   Users, LogOut, Globe, LayoutDashboard, Search, Upload,
-  Pencil, Menu, FileText, Archive, ShieldAlert, CheckCircle2, MessageSquare, X
+  Pencil, Menu, FileText, Archive, ShieldAlert, X
 } from 'lucide-react';
 
 // Tipos
