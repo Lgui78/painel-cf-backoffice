@@ -334,97 +334,97 @@ export default function App() {
            </div>
         ) : (
            <>
-              <div className="flex gap-6 mb-10 shrink-0">
-                <div className="relative flex-1 group"><Search className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-indigo-400 transition-colors" size={24}/><input type="text" placeholder="Pesquisar Empresa, Grupo ou CNPJ..." className="w-full pl-22 pr-10 py-8 bg-[#0A101D] border border-white/5 rounded-[2.5rem] text-sm text-white font-black outline-none focus:border-indigo-500/30 transition-all placeholder-slate-800" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
-                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[2rem] px-10 py-8 text-xs font-black outline-none min-w-[280px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
+              <div className="flex gap-4 mb-6 shrink-0">
+                <div className="relative flex-1 group"><Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-indigo-400 transition-colors" size={20}/><input type="text" placeholder="Pesquisar Empresa, Grupo ou CNPJ..." className="w-full pl-16 pr-6 py-4 bg-[#0A101D] border border-white/5 rounded-[1.5rem] text-xs text-white font-black outline-none focus:border-indigo-500/30 transition-all placeholder-slate-800" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
+                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[1.5rem] px-6 py-4 text-[10px] font-black outline-none min-w-[220px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
                     <option value="Todas">FILTRAR GRUPO</option>
                     {Array.from(new Set(empresas.map(e => e.franquia))).sort().map(f => <option key={f} value={f}>{f?.toUpperCase()}</option>)}
                 </select>
-                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[2rem] px-10 py-8 text-xs font-black outline-none min-w-[280px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
+                <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-[1.5rem] px-6 py-4 text-[10px] font-black outline-none min-w-[220px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
                     <option value="Todos">FILTRAR ANALISTA</option>
                     {Array.from(new Set(empresas.map(e => e.responsavel))).sort().map(r => <option key={r} value={r}>{r?.toUpperCase()}</option>)}
                 </select>
               </div>
 
-              <div className="bg-[#0A101D]/50 rounded-[4rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
+              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
                 <div className="flex-1 overflow-auto scrollbar-hide px-8">
                   <div className="min-w-[1800px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
-                        <tr className="text-slate-600 text-[10px] font-black uppercase tracking-[0.4em]">
-                          <th className="px-12 py-10 border-b border-white/5 sticky left-0 bg-[#161B2A] z-30">STATUS</th>
-                          <th className="px-10 py-10 border-b border-white/5">EMPRESA</th>
-                          <th className="px-10 py-10 border-b border-white/5">CNPJ</th>
-                          <th className="px-10 py-10 border-b border-white/5">GRUPO</th>
-                          <th className="px-10 py-10 border-b border-white/5">ANALISTA</th>
+                        <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
+                          <th className="px-8 py-5 border-b border-white/5 sticky left-0 bg-[#161B2A] z-30">STATUS</th>
+                          <th className="px-6 py-5 border-b border-white/5">EMPRESA</th>
+                          <th className="px-6 py-5 border-b border-white/5">CNPJ</th>
+                          <th className="px-6 py-5 border-b border-white/5">GRUPO</th>
+                          <th className="px-6 py-5 border-b border-white/5">ANALISTA</th>
                           {baseSector === 'Geral' ? (
                             <>
-                              <th className="px-6 py-10 border-b border-white/5 text-center">SETOR DP</th>
-                              <th className="px-6 py-10 border-b border-white/5 text-center">SETOR FISCAL</th>
-                              <th className="px-6 py-10 border-b border-white/5 text-center">SETOR CONTÁBIL</th>
+                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR DP</th>
+                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR FISCAL</th>
+                              <th className="px-4 py-5 border-b border-white/5 text-center">SETOR CONTÁBIL</th>
                             </>
                           ) : baseSector === 'DP' ? (
                             <>
-                              <th className="px-10 py-10 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
-                              <th className="px-10 py-10 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                              <th className="px-10 py-10 border-b border-white/5 text-center">VAR</th>
-                              <th className="px-10 py-10 border-b border-white/5 text-center">ADIA</th>
+                              <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
+                              <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
+                              <th className="px-6 py-5 border-b border-white/5 text-center">VAR</th>
+                              <th className="px-6 py-5 border-b border-white/5 text-center">ADIA</th>
                             </>
                           ) : (
                             <>
-                              <th className="px-10 py-10 border-b border-white/5">TRIBUTAÇÃO</th>
-                              <th className="px-10 py-10 border-b border-white/5">SISTEMA</th>
+                              <th className="px-6 py-5 border-b border-white/5">TRIBUTAÇÃO</th>
+                              <th className="px-6 py-5 border-b border-white/5">SISTEMA</th>
                             </>
                           )}
-                          <th className="px-12 py-10 border-b border-white/5 text-right sticky right-0 bg-[#161B2A] z-30">AÇÕES</th>
+                          <th className="px-8 py-5 border-b border-white/5 text-right sticky right-0 bg-[#161B2A] z-30">AÇÕES</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filtered.map(emp => (
-                          <tr key={emp.id} className="hover:bg-white/[0.02] transition-all group">
-                            <td className="px-12 py-8 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
+                          <tr key={emp.id} className="hover:bg-white/[0.04] transition-all group cursor-pointer">
+                            <td className="px-8 py-4 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
                                {baseSector === 'Geral' ? (
                                   <div className="flex gap-3 justify-start items-center h-full">
-                                     <div title={`DP`} className={`w-3 h-3 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`}></div>
-                                     <div title={`Fiscal`} className={`w-3 h-3 rounded-full ${emp.bkoFiscal ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-800'}`}></div>
-                                     <div title={`Contábil`} className={`w-3 h-3 rounded-full ${emp.bkoContabil ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-slate-800'}`}></div>
+                                     <div title={`DP`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`}></div>
+                                     <div title={`Fiscal`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoFiscal ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-800'}`}></div>
+                                     <div title={`Contábil`} className={`w-2.5 h-2.5 rounded-full ${emp.bkoContabil ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-slate-800'}`}></div>
                                   </div>
                                ) : (
                                   <select 
                                     value={isOnboardingTab ? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia} 
                                     onChange={(e) => updateEmpresaDirectly(emp.id, isOnboardingTab ? (baseSector==='DP'?{faseOnbDP:e.target.value}:baseSector==='Fiscal'?{faseOnbFiscal:e.target.value}:{faseOnbContabil:e.target.value}) : {statusCompetencia: e.target.value})}
-                                    className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase border-none shadow-2xl cursor-pointer ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
+                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase border-none shadow-md cursor-pointer ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
                                   >
                                      {(isOnboardingTab ? statusOnboarding : (baseSector==='DP'?statusOptionsDP : statusOptionsFiscalContabil)).map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
                                   </select>
                                )}
                             </td>
-                            <td className="px-10 py-8"><span className="text-[13px] font-black text-white tracking-widest uppercase group-hover:text-indigo-400 transition-colors">{emp.nome}</span></td>
-                            <td className="px-10 py-8 font-mono text-xs text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
-                            <td className="px-10 py-8"><span className="text-[10px] font-black text-slate-400 bg-white/5 px-6 py-3 rounded-2xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
-                            <td className="px-10 py-8"><span className={`text-[11px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase tracking-widest`}>{emp.responsavel}</span></td>
+                            <td className="px-6 py-4"><span className="text-[11px] font-black text-white tracking-widest uppercase group-hover:text-indigo-400 transition-colors">{emp.nome}</span></td>
+                            <td className="px-6 py-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
+                            <td className="px-6 py-4"><span className="text-[9px] font-black text-slate-400 bg-white/5 px-4 py-2 rounded-xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
+                            <td className="px-6 py-4"><span className={`text-[10px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase tracking-widest`}>{emp.responsavel}</span></td>
                             
                             {baseSector === 'Geral' ? (
                                <>
-                                 <td className="px-6 py-8 text-center text-[10px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
-                                 <td className="px-6 py-8 text-center text-[10px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
-                                 <td className="px-6 py-8 text-center text-[10px] font-black text-slate-600 uppercase italic">{emp.bkoContabil ? 'Ativo' : '-'}</td>
+                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
+                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
+                                 <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoContabil ? 'Ativo' : '-'}</td>
                                </>
                             ) : baseSector === 'DP' ? (
                                <>
-                                  <td className="px-10 py-8 text-center"><div className="mx-auto w-16 h-10 rounded-2xl flex items-center justify-center font-black text-[12px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
-                                  <td className="px-10 py-8 text-center"><div className="mx-auto w-16 h-10 rounded-2xl flex items-center justify-center font-black text-[12px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
-                                  <td className="px-10 py-8 text-center"><div className={`mx-auto w-14 h-10 rounded-2xl flex items-center justify-center font-black text-[10px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                  <td className="px-10 py-8 text-center"><div className={`mx-auto w-14 h-10 rounded-2xl flex items-center justify-center font-black text-[10px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                  <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
+                                  <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
+                                  <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                  <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
                                </>
                             ) : (
                                <>
-                                  <td className="px-10 py-8 text-[11px] font-black text-white/50 uppercase">{emp.tributacao}</td>
-                                  <td className="px-10 py-8 text-[11px] font-black text-white/30 uppercase italic">{emp.sistemaBase}</td>
+                                  <td className="px-6 py-4 text-[9px] font-black text-white/50 uppercase">{emp.tributacao}</td>
+                                  <td className="px-6 py-4 text-[9px] font-black text-white/30 uppercase italic">{emp.sistemaBase}</td>
                                 </>
                             )}
-                            <td className="px-12 py-8 text-right whitespace-nowrap sticky right-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
-                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-5 bg-white/5 rounded-3xl text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all shadow-2xl"><Pencil size={24}/></button>
+                            <td className="px-8 py-4 text-right whitespace-nowrap sticky right-0 bg-[#0A101D]/80 backdrop-blur-md z-10">
+                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-3 bg-white/5 rounded-2xl text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all shadow-lg"><Pencil size={16}/></button>
                             </td>
                           </tr>
                         ))}
