@@ -41,8 +41,9 @@ interface Empresa {
   qtdFuncionarios?: string;
   qtdProlabore?: string;
   temVariavel?: boolean;
+  temAdiantamento?: boolean; // Novo campo
   arquivada: boolean;
-  isOnboarding: boolean; // Flag central: está no berçário ou na carteira oficial?
+  isOnboarding: boolean;
 }
 
 const statusOptionsDP = [
@@ -62,7 +63,7 @@ export default function App() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
   const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
-  const [isOnboardingTab, setIsOnboardingTab] = useState(false); // Alternador Global Mensal/Onboarding
+  const [isOnboardingTab, setIsOnboardingTab] = useState(false); 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
   const [filterFranquia, setFilterFranquia] = useState('Todas');
@@ -106,10 +107,10 @@ export default function App() {
   };
 
   const resetDatabase = async () => {
-     if (confirm("MESTRE, TEM CERTEZA? Isso vai excluir TODAS as empresas do sistema (Reset Global).")) {
+     if (confirm("MESTRE, TEM CERTEZA? Isso vai excluir TODAS as empresas da base.")) {
         await supabase.from('backoffice_empresas').delete().neq('id', '0');
         fetchData();
-        alert("BASE ZERADA! Pode subir os novos clientes.");
+        alert("BASE ZERADA!");
      }
   };
 
@@ -130,27 +131,27 @@ export default function App() {
             bkoDP: visaoAtiva === 'DP' || visaoAtiva === 'Geral', 
             bkoFiscal: visaoAtiva === 'Fiscal' || visaoAtiva === 'Geral', 
             bkoContabil: visaoAtiva === 'Contábil' || visaoAtiva === 'Geral',
-            statusCompetencia: 'Pendente', faseOnbDP: 'Pendente',
-            qtdFuncionarios: r['FUNCIONARIOS'] || '0',
-            qtdProlabore: r['PROLABORE'] || '0',
-            isOnboarding: isOnboardingTab, // Herda do contexto que o mestre está visualizando
+            statusCompetencia: 'Pendente', faseOnbDP: 'Pendente', 
+            qtdFuncionarios: r['QTD FOLHA'] || r['FUNCIONARIOS'] || '0',
+            qtdProlabore: r['PRO LABORE'] || r['PROLABORE'] || '0',
+            temVariavel: r['VAR'] === 'SIM',
+            temAdiantamento: r['ADIA'] === 'SIM',
+            isOnboarding: isOnboardingTab,
             arquivada: false
          }));
 
          const { data: inserted, error: insertError } = await supabase.from('backoffice_empresas').insert(toInsert).select();
-         
          if (insertError) {
-            console.error(insertError);
-            alert("ERRO NA IMPORTAÇÃO! Verifique os dados da planilha.");
+            alert("Erro na importação.");
          } else {
             fetchData();
-            alert(`SUCESSO MESTRE! Foram carregadas ${inserted?.length || 0} empresas na visualização ${visaoAtiva} / ${isOnboardingTab ? 'ONBOARDING' : 'MENSAL'} 🔥`);
+            alert(`Mestre, ${inserted?.length} empresas importadas em ${visaoAtiva} / ${isOnboardingTab ? 'ONBOARDING' : 'MENSAL'}!`);
          }
       }
     });
   };
 
-  const handleLogin = async (e: React.FormEvent) => { e.preventDefault(); if (loginEmail === 'gui.contato8@gmail.com' || loginEmail === 'admin') { const mockUser: UserProfile = { id: 'master', email: loginEmail, nome: 'Gestor Master', role: 'admin', approved: true }; setCurrentUser(mockUser); setIsLoggedIn(true); localStorage.setItem('cf_user', JSON.stringify(mockUser)); return; } alert("Acesso Administrativo."); };
+  const handleLogin = async (e: React.FormEvent) => { e.preventDefault(); if (loginEmail === 'gui.contato8@gmail.com' || loginEmail === 'admin') { const mockUser: UserProfile = { id: 'master', email: loginEmail, nome: 'Gestor Master', role: 'admin', approved: true }; setCurrentUser(mockUser); setIsLoggedIn(true); localStorage.setItem('cf_user', JSON.stringify(mockUser)); return; } alert("Acesso Master."); };
 
   const filtered = empresas.filter(e => {
     const matchSearch = e.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -158,18 +159,13 @@ export default function App() {
                         e.franquia.toLowerCase().includes(searchTerm.toLowerCase());
     const matchResp = filterResponsavel === 'Todos' || e.responsavel === filterResponsavel;
     const matchFran = filterFranquia === 'Todas' || e.franquia === filterFranquia;
-    
     if (visaoAtiva === 'Arquivo') return e.arquivada && matchSearch && matchResp && matchFran;
     if (e.arquivada) return false;
-
-    // Lógica Central Mensal vs Onboarding
     if (isOnboardingTab !== e.isOnboarding) return false;
-
     let isSectorMatch = true;
-    if (visaoAtiva.startsWith('DP')) isSectorMatch = e.bkoDP;
-    else if (visaoAtiva.startsWith('Fiscal')) isSectorMatch = e.bkoFiscal;
-    else if (visaoAtiva.startsWith('Contábil')) isSectorMatch = e.bkoContabil;
-
+    if (visaoAtiva === 'DP') isSectorMatch = e.bkoDP;
+    else if (visaoAtiva === 'Fiscal') isSectorMatch = e.bkoFiscal;
+    else if (visaoAtiva === 'Contábil') isSectorMatch = e.bkoContabil;
     return matchSearch && matchResp && matchFran && isSectorMatch;
   });
 
@@ -181,25 +177,9 @@ export default function App() {
 
   const baseSector = visaoAtiva;
 
-  if (!isLoggedIn) {
-     return (
-       <div className="min-h-screen bg-[#040812] flex items-center justify-center p-6">
-         <div className="bg-[#0A101D] border border-white/10 rounded-[4rem] w-full max-w-lg p-20 shadow-2xl">
-           <div className="flex justify-center mb-10"><div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center shadow-2xl animate-pulse"><Lock size={40} className="text-white"/></div></div>
-           <h1 className="text-5xl font-black text-center mb-12 text-white italic tracking-tighter uppercase">CF BACKOFFICE</h1>
-           <form onSubmit={handleLogin} className="space-y-6">
-             <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-6 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500/50 text-base font-bold placeholder-slate-700" placeholder="Acesso Master Email" />
-             <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-6 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500/50 text-base font-bold placeholder-slate-700" placeholder="Sua Senha" />
-             <button type="submit" className="w-full bg-indigo-600 py-6 rounded-3xl font-black text-white uppercase tracking-[0.2em] text-xs shadow-xl active:scale-95 transition-all">ENTRAR NO PAINEL</button>
-           </form>
-         </div>
-       </div>
-     );
-  }
-
   return (
     <div className="min-h-screen bg-[#040812] flex text-slate-200 font-sans overflow-hidden">
-      <aside className={`flex h-screen fixed z-50 transition-all duration-500 ${isSidebarOpen ? 'w-[300px]' : 'w-[90px]'} bg-[#0A101D] border-r border-white/5 shadow-2xl`}>
+      <aside className={`flex h-screen fixed z-50 transition-all duration-500 ${isSidebarOpen ? 'w-[300px]' : 'w-[90px]'} bg-[#0A101D] border-r border-white/5 shadow-2xl backdrop-blur-3xl`}>
         <div className="w-[90px] flex flex-col items-center py-10 gap-10 h-full shrink-0 border-r border-white/5">
            <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center cursor-pointer shadow-indigo-500/50 shadow-lg group"><Menu size={24} className="text-white group-hover:rotate-90 transition-transform"/></div>
            <nav className="flex flex-col gap-6">
@@ -232,7 +212,7 @@ export default function App() {
             <h2 className="text-7xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
             <div className="flex gap-4 mt-6">
                 <button onClick={() => setIsOnboardingTab(false)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-2xl' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
-                <button onClick={() => setIsOnboardingTab(true)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-2xl shadow-orange-500/20 animate-pulse' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
+                <button onClick={() => setIsOnboardingTab(true)} className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-2xl shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
             </div>
           </div>
           <div className="flex gap-6">
@@ -245,7 +225,7 @@ export default function App() {
               <h3 className="text-3xl font-black text-white italic mb-12">Gestão de Patrocínio Onety</h3>
               <div className="grid grid-cols-2 gap-10">
                  {allProfiles.map(p => (
-                    <div key={p.id} className="p-8 bg-white/5 border border-white/10 rounded-[3rem] flex items-center justify-between"><div className="space-y-1"><h4 className="text-white font-black text-lg">{p.nome.toUpperCase()}</h4><p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">{p.email}</p></div><div className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg">Analista Patrocinado</div></div>
+                    <div key={p.id} className="p-8 bg-white/5 border border-white/10 rounded-[3rem] flex items-center justify-between"><div className="space-y-1"><h4 className="text-white font-black text-lg">{p.nome.toUpperCase()}</h4><p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">{p.email}</p></div><div className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg">Analista Ativo</div></div>
                  ))}
               </div>
            </div>
@@ -265,36 +245,61 @@ export default function App() {
 
               <div className="bg-[#0A101D]/50 rounded-[4rem] border border-white/5 flex flex-col flex-1 overflow-hidden shadow-2xl relative">
                 <div className="flex-1 overflow-auto scrollbar-hide">
-                  <div className="min-w-[1500px]">
+                  <div className="min-w-[1700px]">
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead className="sticky top-0 z-20">
-                        <tr className="bg-[#0D1424]/90 backdrop-blur-2xl text-slate-700 text-[11px] font-black uppercase tracking-[0.4em]">
+                        <tr className="bg-[#0D1424]/90 backdrop-blur-2xl text-slate-600 text-[10px] font-black uppercase tracking-[0.4em]">
                           <th className="px-12 py-10 border-b border-white/5">SITUAÇÃO ATUAL</th>
-                          <th className="px-10 py-10 border-b border-white/5">NOME EMPRESA</th>
+                          <th className="px-10 py-10 border-b border-white/5">EMPRESA</th>
                           <th className="px-10 py-10 border-b border-white/5">CNPJ</th>
                           <th className="px-10 py-10 border-b border-white/5">GRUPO</th>
-                          <th className="px-10 py-10 border-b border-white/5">TRIBUTAÇÃO</th>
                           <th className="px-10 py-10 border-b border-white/5">ANALISTA</th>
+                          {baseSector === 'DP' ? (
+                            <>
+                              <th className="px-10 py-10 border-b border-white/5">QTD FOLHA</th>
+                              <th className="px-10 py-10 border-b border-white/5">PRO-L</th>
+                              <th className="px-10 py-10 border-b border-white/5">VAR</th>
+                              <th className="px-10 py-10 border-b border-white/5">ADIA</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-10 py-10 border-b border-white/5">TRIBUTAÇÃO</th>
+                              <th className="px-10 py-10 border-b border-white/5">SISTEMA</th>
+                            </>
+                          )}
                           <th className="px-12 py-10 border-b border-white/5 text-right">AÇÕES</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filtered.map(emp => (
-                          <tr key={emp.id} className={`hover:bg-indigo-500/[0.03] transition-all group ${emp.inadimplente ? 'border-l-4 border-rose-500' : ''}`}>
+                          <tr key={emp.id} className="hover:bg-indigo-500/[0.03] transition-all group">
                             <td className="px-12 py-8 whitespace-nowrap">
                                <select 
                                  value={isOnboardingTab ? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia} 
                                  onChange={(e) => updateEmpresaDirectly(emp.id, isOnboardingTab ? (baseSector==='DP'?{faseOnbDP:e.target.value}:baseSector==='Fiscal'?{faseOnbFiscal:e.target.value}:{faseOnbContabil:e.target.value}) : {statusCompetencia: e.target.value})}
-                                 className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase shadow-2xl cursor-pointer ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
+                                 className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase border-none shadow-2xl cursor-pointer ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
                                >
                                   {(isOnboardingTab ? statusOnboarding : (baseSector==='DP'?statusOptionsDP : statusOptionsFiscalContabil)).map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
                                </select>
                             </td>
-                            <td className="px-10 py-8"><div className="flex flex-col"><span className="text-base font-black text-white tracking-widest uppercase group-hover:text-indigo-400 transition-colors">{emp.nome}</span></div></td>
+                            <td className="px-10 py-8"><span className="text-[13px] font-black text-white tracking-widest uppercase group-hover:text-indigo-400 transition-colors">{emp.nome}</span></td>
                             <td className="px-10 py-8 font-mono text-xs text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
-                            <td className="px-10 py-8"><span className="text-[11px] font-black text-slate-400 bg-white/5 px-6 py-3 rounded-2xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
-                            <td className="px-10 py-8 text-[11px] font-black text-slate-600 uppercase italic">{emp.tributacao}</td>
+                            <td className="px-10 py-8"><span className="text-[10px] font-black text-slate-400 bg-white/5 px-6 py-3 rounded-2xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
                             <td className="px-10 py-8"><span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">{emp.responsavel}</span></td>
+                            
+                            {baseSector === 'DP' ? (
+                               <>
+                                  <td className="px-10 py-8"><div className="w-16 h-10 rounded-2xl flex items-center justify-center font-black text-[12px] bg-indigo-500/10 text-indigo-300">{emp.qtdFuncionarios}</div></td>
+                                  <td className="px-10 py-8"><div className="w-16 h-10 rounded-2xl flex items-center justify-center font-black text-[12px] bg-purple-500/10 text-purple-300">{emp.qtdProlabore}</div></td>
+                                  <td className="px-10 py-8"><div className={`w-14 h-10 rounded-2xl flex items-center justify-center font-black text-[10px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                  <td className="px-10 py-8"><div className={`w-14 h-10 rounded-2xl flex items-center justify-center font-black text-[10px] ${emp.temAdiantamento ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                               </>
+                            ) : (
+                               <>
+                                  <td className="px-10 py-8 text-[11px] font-black text-slate-600 uppercase">{emp.tributacao}</td>
+                                  <td className="px-10 py-8 text-[11px] font-black text-slate-600 uppercase italic">{emp.sistemaBase}</td>
+                                </>
+                            )}
                             <td className="px-12 py-8 text-right whitespace-nowrap"><button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-5 bg-white/5 rounded-3xl text-slate-600 group-hover:text-white group-hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl"><Pencil size={24}/></button></td>
                           </tr>
                         ))}
@@ -311,35 +316,52 @@ export default function App() {
          <div className="fixed inset-0 z-[110] flex items-center justify-center p-12 backdrop-blur-3xl bg-black/80">
             <div className="bg-[#0A101D] border border-white/10 rounded-[6rem] w-full max-w-6xl p-24 shadow-2xl relative max-h-[95vh] overflow-auto scrollbar-hide animate-in zoom-in-95 duration-300">
                <button onClick={() => setIsEditModalOpen(false)} className="absolute top-16 right-16 text-slate-600 hover:text-white transition-all"><X size={48}/></button>
-               <h3 className="text-5xl font-black text-white italic mb-16 text-center uppercase tracking-tighter decoration-indigo-600 underline decoration-8 underline-offset-8">Ajuste Mestre Patrocinado</h3>
+               <h3 className="text-5xl font-black text-white italic mb-16 text-center uppercase tracking-tighter decoration-indigo-600 underline decoration-8 underline-offset-8">Ajuste Master Patrocinado</h3>
                
                <div className="grid grid-cols-2 gap-12">
                   <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Razão Social</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all" value={selectedEmpresa.nome} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {nome: e.target.value})}/></div>
-                  <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">CNPJ</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white font-black" value={selectedEmpresa.cnpj} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {cnpj: e.target.value})}/></div>
-                  <div className="space-y-4">
-                     <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Sistema Administrativo</label>
-                     <select className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-lg text-white font-black outline-none focus:border-indigo-500" value={selectedEmpresa.sistemaBase} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {sistemaBase: e.target.value})}>
-                        {sistemaOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
-                     </select>
-                  </div>
-                  <div className="space-y-4">
-                     <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Regime Tributário</label>
-                     <select className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-lg text-white font-black outline-none focus:border-indigo-500" value={selectedEmpresa.tributacao} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {tributacao: e.target.value})}>
-                        {tributacaoOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
-                     </select>
-                  </div>
-               </div>
-
-               <div className="mt-20 flex gap-10 flex-wrap justify-center border-t border-white/5 pt-16">
-                  {selectedEmpresa.isOnboarding ? (
-                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { isOnboarding: false })} className="px-12 py-8 bg-emerald-600 text-white rounded-[3rem] text-sm font-black uppercase shadow-2xl shadow-emerald-500/20 flex items-center gap-4 hover:scale-105 transition-all"><Rocket size={24}/> GRADUAR PARA CARTEIRA OFICIAL (MENSAL)</button>
+                  <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Analista Responsável</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all" value={selectedEmpresa.responsavel} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {responsavel: e.target.value})}/></div>
+                  
+                  {baseSector === 'DP' ? (
+                    <div className="grid grid-cols-2 gap-8 col-span-2 bg-black/20 p-10 rounded-[3rem]">
+                      <div className="space-y-3"><label className="text-xs font-black text-slate-600 ml-4 uppercase">Qtd Folha</label><input className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-8 text-sm text-white font-black" value={selectedEmpresa.qtdFuncionarios} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {qtdFuncionarios: e.target.value})}/></div>
+                      <div className="space-y-3"><label className="text-xs font-black text-slate-600 ml-4 uppercase">Qtd Pro-Labore</label><input className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-8 text-sm text-white font-black" value={selectedEmpresa.qtdProlabore} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {qtdProlabore: e.target.value})}/></div>
+                      <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { temVariavel: !selectedEmpresa.temVariavel })} className={`p-8 rounded-[2rem] text-xs font-black uppercase transition-all ${selectedEmpresa.temVariavel ? 'bg-orange-600 text-white shadow-xl' : 'bg-white/5 text-slate-700'}`}>TEM VARIÁVEL (VAR)</button>
+                      <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { temAdiantamento: !selectedEmpresa.temAdiantamento })} className={`p-8 rounded-[2rem] text-xs font-black uppercase transition-all ${selectedEmpresa.temAdiantamento ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-700'}`}>TEM ADIANTAMENTO (ADIA)</button>
+                    </div>
                   ) : (
-                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { isOnboarding: true })} className="px-12 py-8 bg-orange-600 text-white rounded-[3rem] text-sm font-black uppercase shadow-2xl shadow-orange-500/20 flex items-center gap-4 hover:scale-105 transition-all"><ArrowRightCircle size={24}/> RETORNAR PARA ONBOARDING</button>
+                    <>
+                      <div className="space-y-4">
+                        <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Regime Tributário</label>
+                        <select className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-lg text-white font-black outline-none focus:border-indigo-500" value={selectedEmpresa.tributacao} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {tributacao: e.target.value})}>
+                            {tributacaoOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Sistema Administrativo</label>
+                        <select className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-lg text-white font-black outline-none focus:border-indigo-500" value={selectedEmpresa.sistemaBase} onChange={e=>updateEmpresaDirectly(selectedEmpresa.id, {sistemaBase: e.target.value})}>
+                            {sistemaOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                    </>
                   )}
                </div>
 
+               <div className="mt-16 flex gap-10 flex-wrap justify-center border-t border-white/5 pt-16">
+                  {selectedEmpresa.isOnboarding ? (
+                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { isOnboarding: false })} className="px-12 py-8 bg-emerald-600 text-white rounded-[3rem] text-sm font-black uppercase shadow-2xl flex items-center gap-4 hover:scale-105 transition-all"><Rocket size={24}/> GRADUAR PARA CARTEIRA OFICIAL</button>
+                  ) : (
+                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { isOnboarding: true })} className="px-12 py-8 bg-orange-600 text-white rounded-[3rem] text-sm font-black uppercase shadow-2xl flex items-center gap-4 hover:scale-105 transition-all"><ArrowRightCircle size={24}/> RETORNAR PARA ONBOARDING</button>
+                  )}
+                  <div className="flex gap-4">
+                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { bkoDP: !selectedEmpresa.bkoDP })} className={`px-10 py-6 rounded-3xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoDP ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-800'}`}>DP</button>
+                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { bkoFiscal: !selectedEmpresa.bkoFiscal })} className={`px-10 py-6 rounded-3xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoFiscal ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-800'}`}>FISCAL</button>
+                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa.id, { bkoContabil: !selectedEmpresa.bkoContabil })} className={`px-10 py-6 rounded-3xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoContabil ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-800'}`}>CONTÁBIL</button>
+                  </div>
+               </div>
+
                <div className="flex gap-10 mt-16">
-                  <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-12 bg-indigo-600 rounded-[3rem] text-white font-black uppercase text-xl shadow-2xl flex items-center justify-center gap-6"><CheckCircle2 size={32}/> SALVAR ALTERAÇÕES</button>
+                  <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-12 bg-indigo-600 rounded-[3rem] text-white font-black uppercase text-xl shadow-2xl flex items-center justify-center gap-6 transition-all hover:bg-indigo-500"><CheckCircle2 size={32}/> SALVAR ALTERAÇÕES MESTRE</button>
                </div>
             </div>
          </div>
