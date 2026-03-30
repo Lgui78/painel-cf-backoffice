@@ -116,6 +116,11 @@ export default function App() {
     if (isLoggedIn) fetchData();
   }, [isLoggedIn, currentUser, visaoAtiva]);
 
+  const toggleUserApproval = async (id: string, current: boolean) => {
+    await supabase.from('profiles').update({ approved: !current }).eq('id', id);
+    setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, approved: !current } : p));
+  };
+
   const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
     setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
     if (selectedEmpresa?.id === id) setSelectedEmpresa(prev => (prev ? { ...prev, ...updates } : null));
@@ -185,14 +190,48 @@ export default function App() {
 
   const handleLogin = async (e: React.FormEvent) => { 
     e.preventDefault(); 
-    if (loginEmail === 'gui.contato8@gmail.com' || loginEmail === 'admin') { 
-      const mockUser: UserProfile = { id: 'master', email: loginEmail, nome: 'Gestor Master', role: 'admin', approved: true }; 
+    const emailFormatado = loginEmail.trim().toLowerCase();
+
+    // Master Backdoor de Segurança (Sempre entra)
+    if (emailFormatado === 'gui.contato8@gmail.com' || emailFormatado === 'admin') { 
+      const mockUser: UserProfile = { id: 'master', email: emailFormatado, nome: 'Gestor Master', role: 'admin', approved: true }; 
       setCurrentUser(mockUser); 
       setIsLoggedIn(true); 
       localStorage.setItem('cf_user', JSON.stringify(mockUser)); 
       return; 
     } 
-    alert("Acesso Master."); 
+
+    if (!emailFormatado) {
+       alert("Digite seu e-mail para entrar ou solicitar acesso.");
+       return;
+    }
+
+    try {
+       const { data: profile, error } = await supabase.from('profiles').select('*').eq('email', emailFormatado).single();
+
+       if (error || !profile) {
+          // Cadastra solicitação
+          const { error: insertError } = await supabase.from('profiles').insert([{ email: emailFormatado, nome: 'Novo Analista', role: 'analista', approved: false }]);
+          if (insertError) {
+             alert(`Erro ao solicitar acesso: ${insertError.message}`);
+          } else {
+             alert("Sua solicitação de acesso foi enviada para o Mestre! Aguarde aprovação.");
+          }
+          return;
+       }
+
+       if (!profile.approved) {
+          alert("Calma lá! Seu acesso ainda está em ANÁLISE pelo Mestre. Tente novamente mais tarde.");
+          return;
+       }
+
+       // Aprovado - Pode entrar!
+       setCurrentUser(profile as UserProfile);
+       setIsLoggedIn(true);
+       localStorage.setItem('cf_user', JSON.stringify(profile));
+    } catch (err) {
+       alert("Erro de conexão com o banco de usuários.");
+    }
   };
 
   const filtered = empresas.filter(e => {
@@ -324,10 +363,17 @@ export default function App() {
                  {allProfiles.map(p => (
                     <div key={p.id} className="p-8 bg-white/5 border border-white/10 rounded-[3rem] flex items-center justify-between">
                        <div className="space-y-1">
-                          <h4 className="text-white font-black text-lg">{(p.nome || 'SEM NOME').toUpperCase()}</h4>
+                          <div className="flex items-center gap-3">
+                             <h4 className="text-white font-black text-lg">{(p.nome || 'SEM NOME').toUpperCase()}</h4>
+                             {p.role === 'admin' && <span className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-md text-[8px] uppercase font-black">Admin</span>}
+                          </div>
                           <p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">{p.email}</p>
                        </div>
-                       <div className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg">Analista Ativo</div>
+                       {p.approved ? (
+                          <button onClick={() => toggleUserApproval(p.id, p.approved)} className="bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-400/20 shadow-lg hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-400/30 transition-all cursor-pointer" title="Clique para revogar acesso">ANALISTA ATIVO</button>
+                       ) : (
+                          <button onClick={() => toggleUserApproval(p.id, p.approved)} className="bg-orange-500/10 text-orange-400 px-6 py-2 rounded-xl text-[9px] font-black uppercase border border-orange-400/20 shadow-lg hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-400/30 transition-all animate-pulse cursor-pointer" title="Clique para aprovar acesso">APROVAR ACESSO</button>
+                       )}
                     </div>
                  ))}
               </div>
