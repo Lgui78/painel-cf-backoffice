@@ -62,6 +62,13 @@ interface Empresa {
   qtdProlabore?: string;
   temVariavel?: boolean;
   temAdiantamento?: boolean;
+  atividade?: string;
+  competencia?: string;
+  piConcluido?: boolean;
+  onety?: boolean;
+  procuracao?: boolean;
+  emprestimoConsignado?: boolean;
+  convencaoColetiva?: boolean;
   arquivada: boolean;
   isOnboarding: boolean;
   module_origin?: string;
@@ -174,17 +181,38 @@ export default function App() {
                }
             });
 
-            return {
+             return {
                nome: normalizedRow['EMPRESA'] || normalizedRow['RAZAO SOCIAL'] || normalizedRow['RAZÃO SOCIAL'] || normalizedRow['CLIENTE'] || normalizedRow['NOME'] || normalizedRow['NOME FANTASIA'] || 'Empresa Nova (Sem Nome)',
                cnpj: normalizedRow['CNPJ'] || '',
                franquia: normalizedRow['FRANQUIA'] || normalizedRow['GRUPO'] || 'Indefinida',
                responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || normalizedRow['ATENDENTE'] || 'Sem Analista',
                tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
                sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
-               qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['QTDFUNCIONARIOS'] || '',
-               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['QTDPROLABORE'] || '',
-               module_origin: visaoAtiva,
-               is_global: isGlobalUpload
+               qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['FUNCIONÁRIOS'] || normalizedRow['FUNCIONARIOS'] || '',
+               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['PRÓ-LABORE'] || '',
+               atividade: normalizedRow['ATIVIDADE'] || '',
+               competencia: normalizedRow['COMPETENCIA'] || normalizedRow['COMPETÊNCIA'] || '',
+               module_origin: isGlobalUpload ? 'Geral' : visaoAtiva,
+               is_global: isGlobalUpload,
+               bkoDP: visaoAtiva === 'DP' || isGlobalUpload,
+               bkoFiscal: visaoAtiva === 'Fiscal' || isGlobalUpload,
+               bkoContabil: visaoAtiva === 'Contábil' || isGlobalUpload,
+               inadimplente: false,
+               arquivada: false,
+               isOnboarding: false,
+               statusCompetencia: 'Liberado pra envio',
+               faseOnbDP: 'Fase 1: Coleta',
+               faseOnbFiscal: 'Fase 1: Coleta',
+               faseOnbContabil: 'Fase 1: Coleta',
+               codigoSistema: '',
+               dataEntrada: new Date().toISOString().split('T')[0],
+               temVariavel: normalizedRow['VARIAVEL'] === 'SIM' || normalizedRow['VARIÁVEL'] === 'SIM' || normalizedRow['VAR'] === 'SIM',
+               temAdiantamento: normalizedRow['ADIANTAMENTO'] === 'SIM' || normalizedRow['ADIA'] === 'SIM',
+               piConcluido: normalizedRow['PI CONCLUIDO'] === 'SIM' || normalizedRow['PI CONCLUÍDO'] === 'SIM',
+               onety: normalizedRow['ONETY'] === 'SIM',
+               procuracao: normalizedRow['PROCURACAO'] === 'SIM' || normalizedRow['PROCURAÇÃO'] === 'SIM',
+               emprestimoConsignado: normalizedRow['EMPRESTIMO CONSIGNADO'] === 'SIM' || normalizedRow['EMPRÉSTIMO CONSIGNADO'] === 'SIM',
+               convencaoColetiva: normalizedRow['CONVENCAO COLETIVA'] === 'SIM' || normalizedRow['CONVENÇÃO COLETIVA'] === 'SIM',
             };
          });
 
@@ -273,9 +301,7 @@ export default function App() {
       if (visaoAtiva === 'Arquivo') return isArquivada && matchSearch && matchResp && matchFran;
       if (isArquivada) return false;
 
-      // Mesmo tratamento para o Onboarding
-      const isOnboarding = e?.isOnboarding === true || String(e?.isOnboarding) === 'true';
-      if (isOnboardingTab !== isOnboarding) return false;
+      // isOnboardingTab apenas controla as colunas exibidas, não filtra empresas
 
       let isSectorMatch = true;
       if (visaoAtiva === 'DP') isSectorMatch = e?.bkoDP !== false && String(e?.bkoDP) !== 'false';
@@ -433,10 +459,30 @@ export default function App() {
                             </>
                           ) : baseSector === 'DP' ? (
                             <>
-                              <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
-                              <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                              <th className="px-6 py-5 border-b border-white/5 text-center">VAR</th>
-                              <th className="px-6 py-5 border-b border-white/5 text-center">ADIA</th>
+                              {isOnboardingTab ? (
+                                <>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center">TRIB.</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center">ATIVIDADE</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center font-bold text-indigo-400">FUNC.</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center">SISTEMA</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center">VAR</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center">ADIA</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center text-orange-400">COMPET.</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="PI CONCLUIDO">PI</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="ONETY">1T</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="PROCURACAO">PROC.</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center" title="EMPRESTIMO CONSIGNADO">CONS.</th>
+                                  <th className="px-4 py-5 border-b border-white/5 text-center text-[8px]" title="CONVENCAO COLETIVA">C.COL</th>
+                                </>
+                              ) : (
+                                <>
+                                  <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
+                                  <th className="px-6 py-5 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
+                                  <th className="px-6 py-5 border-b border-white/5 text-center">VAR</th>
+                                  <th className="px-6 py-5 border-b border-white/5 text-center">ADIA</th>
+                                </>
+                              )}
                             </>
                           ) : (
                             <>
@@ -473,8 +519,8 @@ export default function App() {
                             <td className="px-6 py-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
                             <td className="px-6 py-4"><span className="text-[9px] font-black text-slate-400 bg-white/5 px-4 py-2 rounded-xl border border-white/5 uppercase shadow-inner">{emp.franquia}</span></td>
                             <td className="px-6 py-4"><span className={`text-[10px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase tracking-widest`}>{emp.responsavel}</span></td>
-                            
-                            {baseSector === 'Geral' ? (
+                             
+                             {baseSector === 'Geral' ? (
                                <>
                                  <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
                                  <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
@@ -482,16 +528,36 @@ export default function App() {
                                </>
                             ) : baseSector === 'DP' ? (
                                <>
-                                  <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
-                                  <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
-                                  <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                  <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                  {isOnboardingTab ? (
+                                    <>
+                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-500 uppercase">{emp.tributacao?.substring(0,3)}</td>
+                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-300 uppercase">{emp.atividade || '-'}</td>
+                                      <td className="px-4 py-4 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
+                                      <td className="px-4 py-4 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
+                                      <td className="px-4 py-4 text-center text-[9px] font-black text-slate-600 italic uppercase">{emp.sistemaBase}</td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-8 h-4 rounded-md flex items-center justify-center font-black text-[7px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-8 h-4 rounded-md flex items-center justify-center font-black text-[7px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                      <td className="px-4 py-4 text-center text-[9px] font-black text-orange-400/70 whitespace-nowrap">{emp.competencia || '-'}</td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.piConcluido ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-white/5'}`}>{emp.piConcluido && <CheckCircle2 size={10} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.onety ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-white/5'}`}>{emp.onety && <Rocket size={10} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.procuracao ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5'}`}>{emp.procuracao && <FileText size={10} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.emprestimoConsignado ? 'bg-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white/5'}`}>{emp.emprestimoConsignado && <ShieldCheck size={10} className="text-white"/>}</div></td>
+                                      <td className="px-2 py-4 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.convencaoColetiva ? 'bg-rose-500 shadow-lg shadow-rose-500/20' : 'bg-white/5'}`}>{emp.convencaoColetiva && <Users size={10} className="text-white"/>}</div></td>
+                                    </>
+                                  ) : (
+                                    <>
+                                       <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-indigo-500/10 text-indigo-300 shadow-inner">{emp.qtdFuncionarios}</div></td>
+                                       <td className="px-6 py-4 text-center"><div className="mx-auto w-12 h-6 rounded-xl flex items-center justify-center font-black text-[10px] bg-purple-500/10 text-purple-300 shadow-inner">{emp.qtdProlabore}</div></td>
+                                       <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
+                                       <td className="px-6 py-4 text-center"><div className={`mx-auto w-10 h-6 rounded-xl flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
+                                    </>
+                                  )}
                                </>
                             ) : (
                                <>
                                   <td className="px-6 py-4 text-[9px] font-black text-white/50 uppercase">{emp.tributacao}</td>
                                   <td className="px-6 py-4 text-[9px] font-black text-white/30 uppercase italic">{emp.sistemaBase}</td>
-                                </>
+                               </>
                             )}
                           </tr>
                         ))}
@@ -517,11 +583,20 @@ export default function App() {
                   <div className="col-span-2 grid grid-cols-3 gap-8 bg-black/30 p-12 rounded-[4rem] border border-white/5 mt-8 text-slate-200">
                      <div className="space-y-6">
                         <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest border-b border-indigo-400/20 pb-4">Setor DP</h4>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Folha</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdFuncionarios} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdFuncionarios: e.target.value})}/></div>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Pro-L</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdProlabore} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdProlabore: e.target.value})}/></div>
-                        <div className="flex flex-col gap-3 pt-4">
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temVariavel: !selectedEmpresa!.temVariavel })} className={`py-4 rounded-xl text-[9px] font-black uppercase transition-all ${selectedEmpresa.temVariavel ? 'bg-orange-600 text-white' : 'bg-white/5 text-slate-700'}`}>VARIÁVEL (VAR)</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temAdiantamento: !selectedEmpresa!.temAdiantamento })} className={`py-4 rounded-xl text-[9px] font-black uppercase transition-all ${selectedEmpresa.temAdiantamento ? 'bg-sky-600 text-white' : 'bg-white/5 text-slate-700'}`}>ADIANTAMENTO (ADIA)</button>
+                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Atividade</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.atividade} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {atividade: e.target.value})}/></div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Folha</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdFuncionarios} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdFuncionarios: e.target.value})}/></div>
+                           <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Pro-L</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdProlabore} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdProlabore: e.target.value})}/></div>
+                        </div>
+                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Competência</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.competencia} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {competencia: e.target.value})}/></div>
+                        <div className="grid grid-cols-2 gap-3 pt-4">
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temVariavel: !selectedEmpresa!.temVariavel })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.temVariavel ? 'bg-orange-600 text-white' : 'bg-white/5 text-slate-700'}`}>VARIÁVEL</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temAdiantamento: !selectedEmpresa!.temAdiantamento })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.temAdiantamento ? 'bg-sky-600 text-white' : 'bg-white/5 text-slate-700'}`}>ADIANTAMENTO</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { piConcluido: !selectedEmpresa!.piConcluido })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.piConcluido ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-700'}`}>PI CONCLUÍDO</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { onety: !selectedEmpresa!.onety })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.onety ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-700'}`}>ONETY</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { procuracao: !selectedEmpresa!.procuracao })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.procuracao ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-700'}`}>PROCURAÇÃO</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { emprestimoConsignado: !selectedEmpresa!.emprestimoConsignado })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.emprestimoConsignado ? 'bg-amber-600 text-white' : 'bg-white/5 text-slate-700'}`}>CONSIGNADO</button>
+                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { convencaoColetiva: !selectedEmpresa!.convencaoColetiva })} className={`col-span-2 py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.convencaoColetiva ? 'bg-rose-600 text-white' : 'bg-white/5 text-slate-700'}`}>CONVENÇÃO COLETIVA</button>
                         </div>
                      </div>
 
