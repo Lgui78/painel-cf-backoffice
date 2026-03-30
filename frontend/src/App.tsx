@@ -108,6 +108,32 @@ const analistasDP = [
   "Isadora Soares",
 ];
 
+const analistasFiscal = [
+  "Yuri Rianelli Fiuza",
+  "Luiza Cruz",
+  "Luma Feitosa",
+  "Jullia Antunes",
+  "Carlos Henrique",
+  "Matheus Mello",
+  "Rafael Oliveira",
+  "Matheus Dias",
+  "Sthephany Moraes",
+  "Maria Paulino",
+  "Sara Barbosa",
+  "Flavio Abreu",
+];
+
+const analistasContabil = [
+  "Vinicius Duarte",
+  "Augusto Turl",
+  "Isabelly Felix",
+  "Maria Claudia",
+  "Manoel Joao",
+  "Ingrid Cantanhede",
+  "Lorenna Costa",
+  "Arthur Luiz",
+];
+
 const tributacaoOptions = ["Simples Nacional", "Lucro Presumido", "Lucro Real", "MEI", "Isento/Imune"];
 const sistemaOptions = ["Domínio Base 1", "Domínio Base 2", "Domínio Base 3", "Alterdata", "Nuvem", "Outros"];
 
@@ -781,7 +807,7 @@ export default function App() {
                        onChange={e => updateEmpresaDirectly(selectedEmpresa!.id, {responsavel: e.target.value})}
                      >
                        <option value="" className="bg-[#0A101D]">-- Selecionar Analista --</option>
-                       {analistasDP.map(a => <option key={a} value={a} className="bg-[#0A101D]">{a.toUpperCase()}</option>)}
+                       {(baseSector === 'DP' ? analistasDP : baseSector === 'Fiscal' ? analistasFiscal : baseSector === 'Contábil' ? analistasContabil : [...analistasDP, ...analistasFiscal]).map(a => <option key={a} value={a} className="bg-[#0A101D]">{a.toUpperCase()}</option>)}
                      </select>
                    </div>
                   
