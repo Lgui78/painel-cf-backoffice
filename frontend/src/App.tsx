@@ -1,864 +1,1025 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import Papa from 'papaparse';
 import { 
-  Users, LogOut, Globe, Search, Upload,
-  Pencil, Menu, FileText, Archive, X, ShieldCheck, CheckCircle2,
-  Trash2, ArrowRightCircle, Rocket, UserCog, BookOpen
+  Users, Search, Upload, Globe, FileText, BookOpen, LogOut, X, Pencil, Archive, AlertTriangle, Menu, UserCog, DollarSign, Trash2, RefreshCcw, Plus, ChevronLeft, ChevronRight, ExternalLink
 } from 'lucide-react';
-
+import Papa from 'papaparse';
 import './App.css';
 
 // Tipos
-type Visao = 'Geral' | 'DP' | 'Fiscal' | 'Contábil' | 'Arquivo' | 'Usuarios';
-
-const customScrollStyles = `
-  .custom-scrollbar::-webkit-scrollbar {
-    height: 10px;
-    width: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2);
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(99,102,241,0.5);
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(99,102,241,0.8);
-  }
-`;
+type Visao = 'Geral' | 'DP' | 'Fiscal' | 'Contábil' | 'Arquivo' | 'Usuarios' | 'COBRANCA';
 
 interface UserProfile {
   id: string;
   email: string;
   nome: string;
-  role: 'admin' | 'analista';
+  role: 'admin' | 'lider' | 'analista';
   approved: boolean;
-  responsavel_id?: string;
-  modulos?: string; // ex: "DP,Fiscal,Contabil,Geral"
+  setor?: 'DP' | 'FISCAL' | 'CONTABIL' | 'FINANCEIRO';
+  modulos?: string; 
 }
 
 interface Empresa {
   id: string;
-  responsavel: string;
-  responsavel_id?: string;
-  franquia: string;
-  cnpj: string;
-  tributacao: string;
   nome: string;
-  sistemaBase: string; 
-  codigoSistema: string;
-  dataEntrada: string;
-  inadimplente: boolean;
-  statusCompetencia: string; 
-  faseOnbDP: string; 
-  faseOnbFiscal: string;
-  faseOnbContabil: string;
+  cnpj: string;
+  franquia: string;
+  responsavel: string;
+  competencia: string;
+  link_onboarding?: string;
+  link_onetty?: string;
+  inicio_onboarding?: string;
+  tributacao: string;
+  atividade: string;
+  qtd_func: string;
+  pro_l: string;
+  sistema: string;
+  var_campo: boolean;
+  adia_campo: boolean;
+  proc: boolean;
+  cons: boolean;
+  c_col: boolean;
+  observacoes: string;
+  isArchived: boolean;
+  isOnboarding?: boolean;
+  statusCompetencia: 'PENDENTE' | 'EM ANDAMENTO' | 'CONCLUÍDO' | 'NÃO SE APLICA';
+
+  // CAMPOS FINANCEIROS BKO
   bkoDP: boolean;
+  valorDP: number;
+  pagoDP: boolean;
+  vencDP: string;
+  
   bkoFiscal: boolean;
+  valorFiscal: number;
+  pagoFiscal: boolean;
+  vencFiscal: string;
+  
   bkoContabil: boolean;
-  qtdFuncionarios?: string;
-  qtdProlabore?: string;
-  temVariavel?: boolean;
-  temAdiantamento?: boolean;
-  atividade?: string;
-  competencia?: string;
-  piConcluido?: boolean;
-  onety?: boolean;
-  procuracao?: boolean;
-  emprestimoConsignado?: boolean;
-  convencaoColetiva?: boolean;
-  arquivada: boolean;
-  isOnboarding: boolean;
-  module_origin?: string;
-  is_global?: boolean;
+  valorContabil: number;
+  pagoContabil: boolean;
+  vencContabil: string;
+
+  valorMensalidade: number;
+  dataVencimento: string;
+  statusFinanceiro: 'PENDENTE' | 'EM ANDAMENTO' | 'CONCLUÍDO';
 }
 
-const statusOptionsDP = [
-  "100% concluído",
-  "Folha enviada/variável",
-  "Folha enviada aguardando conferência do franqueado",
-  "Aguardando/variáveis",
-  "Aguardando retorno do cliente",
-  "Certificado com 2 etapas",
-  "Liberado pra envio",
-  "Sem certificado",
-  "Certificado vencido",
-  "Parametrizar",
-  "Sem procuração",
-  "Aguardando T.I",
-  "Aguardando documento",
-  "Em conferência",
-  "Bloqueado",
+const analistasDP = ['FERNANDA', 'GABRIEL', 'THAIS', 'POLIANA'];
+const analistasFiscal = ['MAYCON', 'GABRIELA', 'JULIA', 'RAFAEL'];
+const analistasContabil = ['LUANA', 'VINICIUS', 'ANA', 'CARLOS'];
+const analistasFinanceiro = ['ALINE', 'BEATRIZ', 'FINANCEIRO MATRIZ'];
+
+const MESES = [
+  'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+  'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
 ];
 
-const statusOptionsFiscalContabil = ["Pendente", "Em Andamento", "Concluído", "Em Conferência"];
-const statusOnboarding = ["Fase 1: Coleta", "Fase 2: Implantação", "Fase 3: Treinamento", "100% Onboarded"];
-
-const analistasDP = [
-  "Vitória Mendes",
-  "Melissa Soares",
-  "Ana Carolina Valle",
-  "Mayara Coelho",
-  "Lydi Santos",
-  "Clarisse Jordão",
-  "Sara Gabry",
-  "Isadora Soares",
-];
-
-const analistasFiscal = [
-  "Yuri Rianelli Fiuza",
-  "Luiza Cruz",
-  "Luma Feitosa",
-  "Jullia Antunes",
-  "Carlos Henrique",
-  "Matheus Mello",
-  "Rafael Oliveira",
-  "Matheus Dias",
-  "Sthephany Moraes",
-  "Maria Paulino",
-  "Sara Barbosa",
-  "Flavio Abreu",
-];
-
-const analistasContabil = [
-  "Vinicius Duarte",
-  "Augusto Turl",
-  "Isabelly Felix",
-  "Maria Claudia",
-  "Manoel Joao",
-  "Ingrid Cantanhede",
-  "Lorenna Costa",
-  "Arthur Luiz",
-];
-
-const tributacaoOptions = ["Simples Nacional", "Lucro Presumido", "Lucro Real", "MEI", "Isento/Imune"];
-const sistemaOptions = ["Domínio Base 1", "Domínio Base 2", "Domínio Base 3", "Alterdata", "Nuvem", "Outros"];
+const GLOBAL_ADMINS = ['gui.contato8@gmail.com', 'admin'];
 
 export default function App() {
+  const formatCNPJ = (val: string) => {
+    const digits = (val || '').replace(/\D/g, '');
+    if (digits.length !== 14) return val;
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  };
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([]);
-  const [visaoAtiva, setVisaoAtiva] = useState<Visao>(
-    () => (localStorage.getItem('cf_visao') as Visao) || 'Geral'
-  );
-  const [isOnboardingTab, setIsOnboardingTab] = useState(
-    () => localStorage.getItem('cf_onboarding_tab') === 'true'
-  );
+  const [visaoAtiva, setVisaoAtiva] = useState<Visao>('Geral');
+  const [isOnboardingTab, setIsOnboardingTab] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('Todos');
   const [filterFranquia, setFilterFranquia] = useState('Todas');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+  const [viewState, setViewState] = useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isGlobalUpload, setIsGlobalUpload] = useState(false);
-
+  const [isPRDrawerOpen, setIsPRDrawerOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginNome, setLoginNome] = useState('');
   const [loginMode, setLoginMode] = useState<'login' | 'register' | 'pending'>('login');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
-  // Persiste módulo e aba no localStorage
-  useEffect(() => { localStorage.setItem('cf_visao', visaoAtiva); }, [visaoAtiva]);
-  useEffect(() => { localStorage.setItem('cf_onboarding_tab', String(isOnboardingTab)); }, [isOnboardingTab]);
+  const checkOverdue = (emp: Empresa) => {
+    const resp = (emp.responsavel || '').toUpperCase().trim();
+    if (resp && resp !== 'NÃO ATRIBUÍDO' && resp !== 'NAO ATRIBUIDO') return false;
+    if (!emp.inicio_onboarding) return false;
 
+    try {
+      const datePart = (emp.inicio_onboarding || '').replace(/-/g, '/');
+      const [startM, startY] = datePart.split('/').map(Number);
+      if (!startM || !startY) return false;
+
+      const currentM = viewState.month + 1;
+      const currentY = viewState.year;
+
+      const diff = (currentY - startY) * 12 + (currentM - startM);
+      return diff >= 3; 
+    } catch { return false; }
+  };
+
+
+  const getCurrentCompetence = () => {
+  const now = new Date();
+  return `${MESES[now.getMonth()]} / ${now.getFullYear()}`;
+};
   const fetchData = async () => {
     let query = supabase.from('backoffice_empresas').select('*');
-    
-    // RBAC
-    if (currentUser?.role !== 'admin' && currentUser?.responsavel_id) {
-       query = query.eq('responsavel_id', currentUser.responsavel_id);
+    if (currentUser?.role === 'analista') {
+       query = query.or(`responsavel.eq."${currentUser?.nome}",responsavel.eq."${currentUser?.email}"`);
     }
+    const { data: emp } = await query.order('created_at', { ascending: false });
+    if (emp) setEmpresas(emp as Empresa[]);
+  };
 
-    // ISOLAMENTO DE MÓDULO (Nível Supabase)
-    if (visaoAtiva !== 'Geral' && visaoAtiva !== 'Usuarios' && visaoAtiva !== 'Arquivo') {
-       query = query.or(`is_global.eq.true,module_origin.eq.${visaoAtiva}`);
-    }
-
-    const { data: emp, error } = await query.order('created_at', { ascending: false });
-    
-    if (error) {
-       console.error("Erro ao puxar dados isolados:", error);
-    } else if (emp) {
-       setEmpresas(emp as Empresa[]);
-    }
-
-    if (currentUser?.role === 'admin') {
-       const { data: profs } = await supabase.from('profiles').select('*');
-       if (profs) setAllProfiles(profs as UserProfile[]);
+  const updateProfile = async (id: string, updates: Partial<UserProfile>) => {
+    const { error } = await supabase.from('profiles').update(updates).eq('id', id);
+    if (!error) {
+      setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+      if (currentUser?.id === id) {
+         const newProf = { ...currentUser, ...updates };
+         setCurrentUser(newProf);
+         localStorage.setItem('cf_user', JSON.stringify(newProf));
+      }
     }
   };
 
   useEffect(() => {
     const saved = localStorage.getItem('cf_user');
-    if(saved) {
-       const parsed = JSON.parse(saved);
-       setCurrentUser(parsed);
-       setIsLoggedIn(true);
+    if (saved) {
+      const user = JSON.parse(saved);
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      fetchData();
+      if (user.role === 'admin') {
+         supabase.from('profiles').select('*').then(({ data }) => data && setAllProfiles(data));
+      }
     }
   }, []);
 
   useEffect(() => {
     if (isLoggedIn) fetchData();
-  }, [isLoggedIn, currentUser, visaoAtiva]);
+  }, [visaoAtiva, isOnboardingTab, viewState]);
 
-  const toggleUserApproval = async (id: string, current: boolean) => {
-    await supabase.from('profiles').update({ approved: !current }).eq('id', id);
-    setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, approved: !current } : p));
+  const handleUpdate = async (id: string, updates: Partial<Empresa>) => {
+    const target = empresas.find(e => e.id === id);
+    if (!target) return;
+
+    if (updates.responsavel && updates.responsavel !== target.responsavel) {
+       updates.isOnboarding = updates.responsavel.toUpperCase().includes('NÃO ATRIBUÍDO');
+    }
+    
+    const { error } = await supabase.from('backoffice_empresas').update(updates).eq('id', id);
+    if (!error) {
+       setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    }
   };
 
-  const updateProfile = async (id: string, updates: Partial<UserProfile>) => {
-    setAllProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-    await supabase.from('profiles').update(updates).eq('id', id);
+  const archiveEmpresa = async (id: string) => {
+    const { error } = await supabase.from('backoffice_empresas').update({ isArchived: true }).eq('id', id);
+    if (!error) {
+       setEmpresas(prev => prev.map(e => e.id === id ? { ...e, isArchived: true } : e));
+    }
   };
 
-  const updateEmpresaDirectly = async (id: string, updates: Partial<Empresa>) => {
-    setEmpresas(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-    if (selectedEmpresa?.id === id) setSelectedEmpresa(prev => (prev ? { ...prev, ...updates } : null));
-    await supabase.from('backoffice_empresas').update(updates).eq('id', id);
+  const restoreEmpresa = async (id: string) => {
+    const { error } = await supabase.from('backoffice_empresas').update({ isArchived: false }).eq('id', id);
+    if (!error) {
+       setEmpresas(prev => prev.map(e => e.id === id ? { ...e, isArchived: false } : e));
+    }
   };
 
-  const resetDatabase = async () => {
-     if (confirm("MESTRE, TEM CERTEZA? Isso vai excluir TODAS as empresas da base.")) {
-        await supabase.from('backoffice_empresas').delete().neq('id', '0');
-        fetchData();
-        alert("BASE ZERADA!");
-     }
+  const handleBulkStatus = async (status: string) => {
+    if (!status || selectedIds.length === 0) return;
+    const { error } = await supabase.from('backoffice_empresas').update({ statusCompetencia: status }).in('id', selectedIds);
+    if (!error) {
+      setEmpresas(prev => prev.map(e => selectedIds.includes(e.id) ? {...e, statusCompetencia: status as any} : e));
+      setSelectedIds([]);
+    }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkAssign = async (novoResponsavel: string) => {
+    if (!novoResponsavel || selectedIds.length === 0) return;
+    const selectedCNPJs = Array.from(new Set(empresas.filter(e => selectedIds.includes(e.id)).map(e => e.cnpj)));
+    const updates = { responsavel: novoResponsavel, isOnboarding: false };
+    const { error } = await supabase.from('backoffice_empresas').update(updates).in('cnpj', selectedCNPJs);
+    if (!error) {
+       setEmpresas(prev => prev.map(e => selectedCNPJs.includes(e.cnpj) ? {...e, ...updates} : e));
+       setSelectedIds([]);
+    }
+  };
+
+  const syncEdit = async (dataOverride?: Empresa) => {
+    const dataToSave = dataOverride || editingEmpresa;
+    if (!dataToSave) return;
+    const { error } = await supabase.from('backoffice_empresas').update(dataToSave).eq('id', dataToSave.id);
+    if (!error) { fetchData(); setIsEditModalOpen(false); }
+  };
+
+  const cycleStatus = (id: string, current: string) => {
+    const main = current.split('|')[0].trim();
+    const sequence = ['PENDENTE', 'EM ANDAMENTO', '100% CONCLUIDO'];
+    const idx = sequence.indexOf(main);
+    const next = sequence[(idx + 1) % sequence.length];
+    handleUpdate(id, { statusCompetencia: next as any });
+  };
+
+  const handleManualCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const cnpj = (formData.get('cnpj') as string) || '';
+    const nome = (formData.get('nome') as string) || '';
+    const franquia = (formData.get('franquia') as string) || '';
+    const responsavel = (formData.get('responsavel') as string) || 'NÃO ATRIBUÍDO';
+    const tributacao = formData.get('tributacao') as string;
+    const sistema = formData.get('sistema') as string;
+    const comp = getCurrentCompetence();
+    const pro_l = formData.get('pro_l') as string;
+    const qtd_func = formData.get('qtd_func') as string;
+
+    const baseData = { 
+      nome: nome.toUpperCase(), cnpj, franquia: franquia.toUpperCase(), responsavel, 
+      isOnboarding: isOnboardingTab, 
+      bkoDP: visaoAtiva === 'DP' || visaoAtiva === 'Geral',
+      bkoFiscal: visaoAtiva === 'Fiscal',
+      bkoContabil: visaoAtiva === 'Contábil',
+      inicio_onboarding: comp, pro_l: pro_l || '0', qtd_func: qtd_func || '0',
+      tributacao: (tributacao || '').toUpperCase(), 
+      sistema: (sistema || '').toUpperCase(), 
+      competencia: comp,
+      statusCompetencia: 'PENDENTE'
+    };
+
+    const { error } = await supabase.from('backoffice_empresas').insert([baseData]);
+    if (!error) {
+       setIsNewModalOpen(false);
+       fetchData();
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    Papa.parse(file, {
-      header: true, 
-      skipEmptyLines: 'greedy', 
-      complete: async (results) => {
-         const rawData = results.data as any[];
-         
-         const toInsert = rawData.map(r => {
-            const normalizedRow: any = {};
-            Object.keys(r).forEach(k => {
-               if (k) {
-                  const cleanKey = k.replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toUpperCase();
-                  normalizedRow[cleanKey] = r[k];
-               }
-            });
 
-             return {
-               nome: normalizedRow['EMPRESA'] || normalizedRow['RAZAO SOCIAL'] || normalizedRow['RAZÃO SOCIAL'] || normalizedRow['CLIENTE'] || normalizedRow['NOME'] || normalizedRow['NOME FANTASIA'] || 'Empresa Nova (Sem Nome)',
-               cnpj: normalizedRow['CNPJ'] || '',
-               franquia: normalizedRow['FRANQUIA'] || normalizedRow['GRUPO'] || 'Indefinida',
-               responsavel: normalizedRow['RESPONSAVEL'] || normalizedRow['RESPONSÁVEL'] || normalizedRow['ANALISTA'] || normalizedRow['ATENDENTE'] || 'Sem Analista',
-               tributacao: normalizedRow['TRIBUTACAO'] || normalizedRow['TRIBUTAÇÃO'] || 'Simples Nacional',
-               sistemaBase: normalizedRow['SISTEMA'] || 'Domínio Base 1',
-               qtdFuncionarios: normalizedRow['QTD FOLHA'] || normalizedRow['FOLHA'] || normalizedRow['FUNCIONÁRIOS'] || normalizedRow['FUNCIONARIOS'] || '',
-               qtdProlabore: normalizedRow['PRO-L'] || normalizedRow['PROLABORE'] || normalizedRow['PRÓ-LABORE'] || '',
-               atividade: normalizedRow['ATIVIDADE'] || '',
-               competencia: normalizedRow['COMPETENCIA'] || normalizedRow['COMPETÊNCIA'] || '',
-               module_origin: isGlobalUpload ? 'Geral' : visaoAtiva,
-               is_global: isGlobalUpload,
-               bkoDP: visaoAtiva === 'DP' || isGlobalUpload,
-               bkoFiscal: visaoAtiva === 'Fiscal' || isGlobalUpload,
-               bkoContabil: visaoAtiva === 'Contábil' || isGlobalUpload,
-               inadimplente: false,
-               arquivada: false,
-               isOnboarding: false,
-               statusCompetencia: 'Liberado pra envio',
-               faseOnbDP: 'Fase 1: Coleta',
-               faseOnbFiscal: 'Fase 1: Coleta',
-               faseOnbContabil: 'Fase 1: Coleta',
-               temVariavel: normalizedRow['VARIAVEL'] === 'SIM' || normalizedRow['VARIÁVEL'] === 'SIM' || normalizedRow['VAR'] === 'SIM',
-               temAdiantamento: normalizedRow['ADIANTAMENTO'] === 'SIM' || normalizedRow['ADIA'] === 'SIM',
-               piConcluido: normalizedRow['PI CONCLUIDO'] === 'SIM' || normalizedRow['PI CONCLUÍDO'] === 'SIM',
-               onety: normalizedRow['ONETY'] === 'SIM',
-               procuracao: normalizedRow['PROCURACAO'] === 'SIM' || normalizedRow['PROCURAÇÃO'] === 'SIM',
-               emprestimoConsignado: normalizedRow['EMPRESTIMO CONSIGNADO'] === 'SIM' || normalizedRow['EMPRÉSTIMO CONSIGNADO'] === 'SIM',
-               convencaoColetiva: normalizedRow['CONVENCAO COLETIVA'] === 'SIM' || normalizedRow['CONVENÇÃO COLETIVA'] === 'SIM',
-            };
-         });
+    const currentYear = viewState.year;
 
-         const { data: inserted, error: insertError } = await supabase
-            .from('backoffice_empresas')
-            .insert(toInsert)
-            .select();
+    const processRows = async (rows: any[]) => {
+      const toInsert: any[] = [];
+      const toB = (v: any) => {
+        if (v === undefined || v === null) return false;
+        const s = String(v).toUpperCase().trim();
+        return s === 'SIM' || s === 'TRUE' || s === '1' || s === 'S';
+      };
 
-         if (insertError) {
-            console.error("ERRO_SUPABASE_DETALHADO:", insertError);
-            alert(`Mestre, erro na importação: ${insertError.message}`);
-         } else {
-            console.log("SUCESSO_IMPORT:", inserted);
-            fetchData();
-            alert(`Mestre, importação completa! ${inserted?.length || 0} empresas subiram para a base.`);
-         }
-         
-         // Limpar o input de arquivo depois de importar
-         e.target.value = '';
+      rows.forEach(r => {
+        const data: any = {};
+        Object.keys(r).forEach(k => data[k.trim()] = r[k]);
+        if (!data['EMPRESAS'] && !data['EMPRESA'] && !data['NOME']) return;
+
+        const rawCnpj = String(data['CNPJ'] || data['CNPJ '] || data['CNPJ/CPF'] || data.cnpj || '');
+        const cleanCnpj = rawCnpj.replace(/\D/g, '');
+
+        const baseData = {
+          nome: (data.EMPRESAS || data.EMPRESA || data.NOME || 'UNIDADE').toUpperCase(),
+          cnpj: cleanCnpj,
+          franquia: (data.FRANQUIA || 'GERAL').toUpperCase(),
+          responsavel: (data.COLABORADOR || data.RESPONSAVEL || data.ANALISTA || 'NÃO ATRIBUÍDO').toUpperCase().trim(),
+          statusCompetencia: 'Pendente',
+          pro_l: String(data['PRÓ-LABORE'] || data['PRÓ LABORE'] || data['PROLABORE'] || data['PRO-LABORE'] || data['PRO LABORE'] || '0'),
+          qtd_func: String(data['FUNCIONÁRIOS'] || data['FUNCIONARIOS'] || data['FUNC'] || '0'),
+          tributacao: (data['TRIBUTAÇÃO'] || data['TRIBUTACAO'] || data['RENGIME'] || data['REGIME'] || '').toUpperCase(),
+          sistema: (data['SISTEMA'] || data['BASE'] || '').toUpperCase(),
+          isOnboarding: isOnboardingTab,
+          inicio_onboarding: data['COMPETÊNCIA INÍCIO'] || data['COMPETENCIA INICIO'] || data['COMPETÊNCIA'] || data['DATA'] || `${(viewState.month + 1).toString().padStart(2, '0')}/${currentYear}`,
+          bkoDP: visaoAtiva === 'DP' || visaoAtiva === 'Geral', 
+          bkoFiscal: visaoAtiva === 'Fiscal', 
+          bkoContabil: visaoAtiva === 'Contábil',
+          proc: toB(data.PROCURAÇÃO),
+          cons: toB(data['EMPRÉSTIMO CONSIGNADO']),
+          c_col: toB(data['CONVENÇÃO COLETIVA']),
+          var_campo: toB(data['VARIÁVEL']),
+          adia_campo: toB(data['ADIANTAMENTO']),
+          observacoes: data['OBSERVAÇÕES PARA PRÓXIMA ANALISTA'] || data['OBSERVAÇÕES'] || ''
+        };
+
+        for (let m = 0; m < 12; m++) {
+          toInsert.push({ ...baseData, competencia: `${(m + 1).toString().padStart(2, '0')}/${currentYear}` });
+        }
+      });
+
+      if (toInsert.length > 0) {
+        const uniqueToInsert = Array.from(
+          toInsert.reduce((map, obj) => map.set(`${obj.cnpj}-${obj.competencia}`, obj), new Map()).values()
+        );
+
+        const { error } = await supabase
+          .from('backoffice_empresas')
+          .upsert(uniqueToInsert, { onConflict: 'cnpj,competencia' });
+
+        if (error) {
+          console.error("ERRO SUPABASE (UPSERT):", error);
+          alert("❌ ERRO NO BANCO: " + error.message);
+        } else {
+          alert("✅ " + (uniqueToInsert.length / 12).toFixed(0) + " Unidades processadas com sucesso!");
+          fetchData();
+        }
       }
-    });
+    };
+
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      // @ts-ignore
+      const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs");
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { raw: false, defval: "" });
+        await processRows(data);
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      Papa.parse(file, {
+        header: true, skipEmptyLines: 'greedy', delimiter: ';', 
+        complete: async (results) => {
+          if (results.errors.length > 0) {
+            console.error("ERRO NO PARSE:", results.errors);
+            alert("Erro ao ler CSV. Use ponto e vírgula (;).");
+            return;
+          }
+          await processRows(results.data);
+        }
+      });
+    }
+  };
+
+  const baseFiltered = empresas.filter(e => {
+     const resp = (e.responsavel || '').toUpperCase().trim();
+     const matchesSearch = !searchTerm || 
+                          (e.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (e.cnpj || '').includes(searchTerm) ||
+                          (e.franquia || '').toLowerCase().includes(searchTerm.toLowerCase());
+     const matchesFranquia = filterFranquia === 'Todas' || e.franquia === filterFranquia;
+     const matchesAnalista = filterResponsavel === 'Todos' || e.responsavel === filterResponsavel;
+     
+     const isActuallyOnboarding = !resp || resp === 'NÃO ATRIBUÍDO' || resp === 'NAO ATRIBUIDO';
+     const matchesOnboarding = isActuallyOnboarding === isOnboardingTab;
+     const isVisibleInMain = !e.isArchived;
+
+     // VISÃO FINANCEIRA / COBRANÇA
+     if (visaoAtiva === 'COBRANCA') return !e.isArchived && matchesSearch && matchesFranquia;
+
+     // VISÃO ARQUIVO
+     if (visaoAtiva === 'Arquivo') return e.isArchived && currentUser?.role === 'admin';
+
+     // VISÃO GERAL / OPERACIONAL
+     // Se estiver buscando, esquece a trava de onboarding
+     if (searchTerm) return isVisibleInMain && matchesSearch && matchesFranquia;
+
+     return matchesSearch && matchesFranquia && matchesAnalista && matchesOnboarding && isVisibleInMain;
+   });
+
+  const stats = {
+    total: baseFiltered.length,
+    concluida: baseFiltered.filter(e => {
+        const s = (e.statusFinanceiro || '').toUpperCase();
+        return visaoAtiva === 'COBRANCA' ? (s === 'CONCLUÍDO' || s === 'CONCLUIDO') : e.statusCompetencia.startsWith('100% CONCLUIDO');
+    }).length,
+    emAndamento: baseFiltered.filter(e => {
+        const s = (e.statusFinanceiro || '').toUpperCase();
+        return visaoAtiva === 'COBRANCA' ? s === 'EM ANDAMENTO' : e.statusCompetencia.startsWith('EM ANDAMENTO');
+    }).length,
+    pendente: baseFiltered.filter(e => {
+        const s = (e.statusFinanceiro || '').toUpperCase();
+        return visaoAtiva === 'COBRANCA' ? (s === 'PENDENTE' || !e.statusFinanceiro) : e.statusCompetencia.startsWith('PENDENTE');
+    }).length,
+    foraDoPrazo: baseFiltered.filter(e => e.statusCompetencia.startsWith('FORA DO PRAZO') || checkOverdue(e)).length,
+    totalFranquias: new Set(baseFiltered.map(e => e.franquia)).size,
+    totalReceita: baseFiltered.reduce((acc, e) => {
+       const dp = e.bkoDP ? (e.valorDP || 200) : 0;
+       const fis = e.bkoFiscal ? (e.valorFiscal || 200) : 0;
+       const con = e.bkoContabil ? (e.valorContabil || 200) : 0;
+       return acc + (e.valorMensalidade || (dp + fis + con));
+    }, 0),
+    receitaPaga: baseFiltered.reduce((acc, e) => {
+       if (e.statusFinanceiro === 'CONCLUÍDO') return acc + (e.valorMensalidade || ((e.valorDP||200) + (e.valorFiscal||200) + (e.valorContabil||200)));
+       const dp = (e.bkoDP && e.pagoDP) ? (e.valorDP || 200) : 0;
+       const fis = (e.bkoFiscal && e.pagoFiscal) ? (e.valorFiscal || 200) : 0;
+       const con = (e.bkoContabil && e.pagoContabil) ? (e.valorContabil || 200) : 0;
+       return acc + dp + fis + con;
+    }, 0)
+  };
+
+  const filtered = baseFiltered.filter(e => {
+     if (!statusFilter) return true;
+     if (visaoAtiva === 'COBRANCA') {
+        const s = (e.statusFinanceiro || '').toUpperCase();
+        if (statusFilter === 'CONCLUIDO' || statusFilter === '100% CONCLUIDO' || statusFilter === 'PAGO OK') return (s === 'CONCLUÍDO' || s === 'CONCLUIDO');
+        if (statusFilter === 'EM ANDAMENTO' || statusFilter === 'AGENDADO') return s === 'EM ANDAMENTO';
+        if (statusFilter === 'PENDENTE' || statusFilter === 'A COBRAR') return (s === 'PENDENTE' || !e.statusFinanceiro);
+        return true;
+     }
+     if (statusFilter === '100% CONCLUIDO') return e.statusCompetencia.startsWith('100% CONCLUIDO');
+     if (statusFilter === 'EM ANDAMENTO') return e.statusCompetencia.startsWith('EM ANDAMENTO');
+     if (statusFilter === 'PENDENTE') return e.statusCompetencia.startsWith('PENDENTE');
+     if (statusFilter === 'OUTROS') return e.statusCompetencia.startsWith('FORA DO PRAZO') || checkOverdue(e);
+     return true;
+   }).sort((a, b) => {
+    if (visaoAtiva === 'COBRANCA') {
+       const order = { 'PENDENTE': 0, 'EM ANDAMENTO': 1, 'CONCLUÍDO': 2 };
+       const statusA = a.statusFinanceiro || 'PENDENTE';
+       const statusB = b.statusFinanceiro || 'PENDENTE';
+       return (order as any)[statusA] - (order as any)[statusB];
+    }
+    const getRank = (e: Empresa) => {
+      if (e.statusCompetencia.startsWith('100% CONCLUIDO')) return 1;
+      if (e.statusCompetencia.startsWith('EM ANDAMENTO')) return 2;
+      if (e.statusCompetencia.startsWith('PENDENTE')) return 3;
+      if (e.statusCompetencia.startsWith('FORA DO PRAZO') || checkOverdue(e)) return 4;
+      return 5;
+    };
+    return getRank(a) - getRank(b);
+  });
+
+  const canSeeModule = (mod: string) => {
+    if (currentUser?.role === 'admin') return true;
+    return (currentUser?.modulos || '').split(',').includes(mod);
   };
 
   const handleLogin = async (e: React.FormEvent) => { 
     e.preventDefault(); 
-    const emailFormatado = loginEmail.trim().toLowerCase();
-
-    // Master Backdoor de Segurança (Sempre entra)
-    if (emailFormatado === 'gui.contato8@gmail.com' || emailFormatado === 'admin') { 
-      const mockUser: UserProfile = { id: 'master', email: emailFormatado, nome: 'Gestor Master', role: 'admin', approved: true }; 
-      setCurrentUser(mockUser); 
-      setIsLoggedIn(true); 
-      localStorage.setItem('cf_user', JSON.stringify(mockUser)); 
-      return; 
-    } 
-
-    if (!emailFormatado) {
-       alert("Digite seu e-mail para entrar.");
+    const email = loginEmail.trim().toLowerCase();
+    if (GLOBAL_ADMINS.includes(email)) {
+       const master: UserProfile = { id: 'master', email, nome: 'Gestor Master', role: 'admin', approved: true };
+       setCurrentUser(master); setIsLoggedIn(true); localStorage.setItem('cf_user', JSON.stringify(master));
        return;
     }
-
-    try {
-       const { data: profile, error } = await supabase.from('profiles').select('*').eq('email', emailFormatado).single();
-
-       if (error || !profile) {
-          alert("E-mail não encontrado. Clique em 'Solicitar Acesso' para se cadastrar.");
-          return;
-       }
-
-       if (!profile.approved) {
-          setLoginMode('pending');
-          return;
-       }
-
-       // Aprovado - Pode entrar!
-       setCurrentUser(profile as UserProfile);
-       setIsLoggedIn(true);
-       localStorage.setItem('cf_user', JSON.stringify(profile));
-    } catch (err) {
-       alert("Erro de conexão com o banco de usuários.");
-    }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('email', email).single();
+    if (profile && profile.approved) {
+      setCurrentUser(profile); setIsLoggedIn(true); localStorage.setItem('cf_user', JSON.stringify(profile));
+      fetchData();
+    } else alert("Acesso negado ou pendente.");
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailFormatado = loginEmail.trim().toLowerCase();
-    const nomeFormatado = loginNome.trim();
-    if (!emailFormatado || !nomeFormatado) {
-      alert("Preencha nome e e-mail para solicitar acesso.");
-      return;
-    }
-    try {
-      // Verifica se já existe
-      const { data: existing } = await supabase.from('profiles').select('id,approved').eq('email', emailFormatado).single();
-      if (existing) {
-        if (existing.approved) {
-          alert("Este e-mail já tem acesso aprovado. Clique em Entrar.");
-          setLoginMode('login');
-        } else {
-          setLoginMode('pending');
-        }
-        return;
-      }
-      const { error } = await supabase.from('profiles').insert([{ email: emailFormatado, nome: nomeFormatado, role: 'analista', approved: false }]);
-      if (error) {
-        alert(`Erro ao solicitar acesso: ${error.message}`);
-      } else {
-        setLoginMode('pending');
-      }
-    } catch (err) {
-      alert("Erro de conexão.");
-    }
+    const formData = new FormData(e.target as HTMLFormElement);
+    await supabase.from('profiles').insert([{ 
+       email: loginEmail.toLowerCase(), 
+       nome: loginNome, 
+       role: 'analista', 
+       approved: false,
+       setor: formData.get('setor') as any
+    }]);
+    setLoginMode('pending');
   };
 
-  const filtered = empresas.filter(e => {
-    try {
-      const nome = String(e?.nome || '');
-      const cnpj = String(e?.cnpj || '');
-      const franquia = String(e?.franquia || '');
-      const responsavel = String(e?.responsavel || '');
-
-      const matchSearch = nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          cnpj.includes(searchTerm) || 
-                          franquia.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchResp = filterResponsavel === 'Todos' || responsavel === filterResponsavel;
-      const matchFran = filterFranquia === 'Todas' || franquia === filterFranquia;
-      
-      // Converte explicitamente caso venha string 'true' do banco
-      const isArquivada = e?.arquivada === true || String(e?.arquivada) === 'true';
-      if (visaoAtiva === 'Arquivo') return isArquivada && matchSearch && matchResp && matchFran;
-      if (isArquivada) return false;
-
-      // isOnboardingTab apenas controla as colunas exibidas, não filtra empresas
-
-      let isSectorMatch = true;
-      if (visaoAtiva === 'DP') isSectorMatch = e?.bkoDP !== false && String(e?.bkoDP) !== 'false';
-      else if (visaoAtiva === 'Fiscal') isSectorMatch = e?.bkoFiscal !== false && String(e?.bkoFiscal) !== 'false';
-      else if (visaoAtiva === 'Contábil') isSectorMatch = e?.bkoContabil !== false && String(e?.bkoContabil) !== 'false';
-      else if (visaoAtiva === 'Geral') isSectorMatch = true;
-
-      return matchSearch && matchResp && matchFran && isSectorMatch;
-    } catch (err) {
-      console.error("Erro ao processar item do filtro:", err, e);
-      return false;
-    }
-  });
-
-  const getAccentColor = (v: Visao) => {
-    if (v === 'DP') return 'indigo';
-    if (v === 'Fiscal') return 'emerald';
-    if (v === 'Contábil') return 'purple';
-    if (v === 'Arquivo') return 'rose';
-    if (v === 'Usuarios') return 'slate';
-    return 'indigo';
+  const SidebarIcon = ({ icon: Icon, label, isActive, onClick, visible = true }: any) => {
+    if (!visible) return null;
+    return (
+      <button onClick={onClick} title={label} className={`flex items-center rounded-2xl transition-all relative group ${isSidebarExpanded ? 'w-full px-5 py-3.5 gap-4 justify-start' : 'w-12 h-12 justify-center'} ${isActive ? `bg-indigo-600/20 text-indigo-500 shadow-lg` : 'text-indigo-900/60 hover:bg-white/5 hover:text-white'}`}>
+        <Icon size={20} />
+        {isSidebarExpanded && <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>}
+      </button>
+    );
   };
-
-  const getStatusColor = (val: string) => {
-    if (!val) return 'bg-slate-500/10 text-slate-400';
-    if (val === '100% concluído' || val === 'Concluído' || val.includes('100%')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20';
-    if (val.includes('Pendente') || val.includes('Aguardando') || val.includes('Sem')) return 'bg-rose-500/10 text-rose-400 border-rose-400/20';
-    return 'bg-indigo-500/10 text-indigo-300 border-indigo-400/20';
-  };
-
-  const accent = getAccentColor(visaoAtiva);
-  const baseSector = visaoAtiva;
 
   if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-[#040812] flex items-center justify-center p-6 text-slate-200" style={{background: 'radial-gradient(ellipse at 30% 50%, #0d1829 0%, #040812 60%)'}}>
-        <div className="w-full max-w-md">
-
-          {/* LOGO */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl mb-6">
-              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center"><ShieldCheck size={16} className="text-white"/></div>
-              <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Backoffice Mestre</span>
-            </div>
-            <h1 className="text-4xl font-black text-white italic tracking-tighter">
-              {loginMode === 'pending' ? 'Aguardando...' : loginMode === 'register' ? 'Solicitar Acesso' : 'Bem-vindo de volta'}
-            </h1>
-            <p className="text-slate-600 text-xs mt-2 font-black uppercase tracking-widest">
-              {loginMode === 'pending' ? 'Sua solicitação foi enviada' : loginMode === 'register' ? 'Preencha os dados para solicitar entrada' : 'Acesso restrito — equipe interna'}
-            </p>
-          </div>
-
-          <div className="bg-[#0A101D] border border-white/5 p-8 rounded-[2rem] shadow-2xl">
-
-            {/* MODO: PENDENTE */}
-            {loginMode === 'pending' && (
-              <div className="text-center space-y-6 py-4">
-                <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto animate-pulse">
-                  <span className="text-2xl">⏳</span>
-                </div>
-                <div>
-                  <p className="text-white font-black text-sm mb-2">Solicitação Enviada!</p>
-                  <p className="text-slate-500 text-xs">O administrador vai revisar seu pedido e liberar seu acesso em breve.</p>
-                  <p className="text-slate-700 text-[10px] mt-2 font-black uppercase tracking-widest">{loginEmail}</p>
-                </div>
-                <button onClick={() => { setLoginMode('login'); setLoginEmail(''); setLoginNome(''); }} className="text-[10px] font-black text-slate-600 hover:text-white transition-colors uppercase tracking-widest">
-                  Tentar com outro e-mail
-                </button>
-              </div>
-            )}
-
-            {/* MODO: LOGIN */}
-            {loginMode === 'login' && (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">E-mail</label>
-                  <input type="email" placeholder="seu@email.com" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} autoFocus/>
-                </div>
-                <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-black rounded-xl shadow-xl hover:bg-indigo-500 transition-all text-sm uppercase tracking-widest">ENTRAR</button>
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"/></div>
-                  <div className="relative flex justify-center"><span className="bg-[#0A101D] px-4 text-[9px] text-slate-700 uppercase tracking-widest font-black">ou</span></div>
-                </div>
-                <button type="button" onClick={() => setLoginMode('register')} className="w-full py-3 bg-white/5 border border-white/10 text-slate-400 font-black rounded-xl hover:bg-white/10 hover:text-white transition-all text-[10px] uppercase tracking-widest">
-                  Solicitar Acesso →
-                </button>
-              </form>
-            )}
-
-            {/* MODO: REGISTRO */}
-            {loginMode === 'register' && (
+     return (
+       <div className="h-screen w-screen flex items-center justify-center bg-[#05080F]">
+         <div className="bg-[#0A101D] p-10 rounded-[2rem] border border-white/10 w-96 space-y-6">
+            <h1 className="text-2xl font-black text-white italic text-center uppercase tracking-tighter">BKO <span className="text-indigo-500">MESTRE</span></h1>
+            {loginMode === 'pending' ? <p className="text-white/40 text-center text-xs font-black uppercase">Aguardando aprovação...</p> : loginMode === 'register' ? (
               <form onSubmit={handleRegister} className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">Seu Nome Completo</label>
-                  <input type="text" placeholder="Ex: Maria Silva" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginNome} onChange={e => setLoginNome(e.target.value)} autoFocus/>
-                </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-1 block">E-mail Profissional</label>
-                  <input type="email" placeholder="seu@email.com" className="w-full bg-white/5 border border-white/10 px-5 py-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500/50 transition-all placeholder-slate-700" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}/>
-                </div>
-                <button type="submit" className="w-full py-3 bg-orange-600 text-white font-black rounded-xl shadow-xl hover:bg-orange-500 transition-all text-sm uppercase tracking-widest">SOLICITAR ACESSO</button>
-                <button type="button" onClick={() => setLoginMode('login')} className="w-full text-center text-[9px] font-black text-slate-700 hover:text-slate-400 transition-colors uppercase tracking-widest">
-                  ← Voltar para o Login
-                </button>
+                 <input placeholder="NOME COMPLETO" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white text-xs uppercase outline-none" value={loginNome} onChange={e=>setLoginNome(e.target.value)} required/>
+                 <input type="email" placeholder="E-MAIL CORPORATIVO" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white text-xs outline-none" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required/>
+                 <select name="setor" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white text-[10px] font-black uppercase outline-none cursor-pointer" required>
+                     <option value="" className="bg-[#0A101D]">SELECIONE SEU SETOR...</option>
+                     <option value="DP" className="bg-[#0A101D]">DEPARTAMENTO PESSOAL</option>
+                     <option value="FISCAL" className="bg-[#0A101D]">FISCAL</option>
+                     <option value="CONTABIL" className="bg-[#0A101D]">CONTÁBIL</option>
+                     <option value="FINANCEIRO" className="bg-[#0A101D]">FINANCEIRO</option>
+                  </select>
+                 <button className="w-full py-4 bg-orange-600 text-white font-black rounded-xl text-xs uppercase shadow-xl">Solicitar Acesso</button>
+                 <button type="button" onClick={()=>setLoginMode('login')} className="w-full text-white/20 text-[9px] font-black uppercase mt-4">Já tenho conta</button>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4">
+                 <input type="email" placeholder="SEU E-MAIL" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white text-xs outline-none focus:border-indigo-500" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required/>
+                 <button className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl text-xs uppercase shadow-xl hover:bg-indigo-500 transition-all">Acessar Sistema</button>
+                 <button type="button" onClick={()=>setLoginMode('register')} className="w-full text-white/20 text-[9px] font-black uppercase mt-4">Solicitar novo acesso</button>
               </form>
             )}
-          </div>
+         </div>
+       </div>
+     );
+  }
 
-          <p className="text-center text-[9px] text-slate-800 mt-6 font-black uppercase tracking-widest">Onety © 2025 — Acesso restrito</p>
-        </div>
-      </div>
-    );
+  if ((visaoAtiva as string) === 'Usuarios') {
+     return (
+       <div className="flex h-screen bg-[#05080F] text-slate-200">
+          <aside className="w-20 bg-[#0A101D] border-r border-white/5 flex flex-col items-center py-8">
+             <button onClick={()=>setVisaoAtiva('Geral')}><Menu size={24}/></button>
+          </aside>
+          <main className="flex-1 p-10 overflow-auto bg-[#0A101D]">
+              <div className="flex items-center justify-between mb-10">
+                 <h2 className="text-xl font-black text-white italic uppercase tracking-widest flex items-center gap-4"><UserCog size={28} className="text-indigo-500"/> Controle de Squad</h2>
+                 <button onClick={()=>setVisaoAtiva('Geral')} className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-white uppercase hover:bg-white/10 transition-all">Voltar ao Dashboard</button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                 {allProfiles.sort((a,b) => a.nome.localeCompare(b.nome)).map(p => {
+                    const toggleMod = (mod: string) => {
+                       let mods = (p.modulos || '').split(',').map(m => m.trim()).filter(m => m);
+                       if (mods.includes(mod)) mods = mods.filter(m => m !== mod);
+                       else mods.push(mod);
+                       updateProfile(p.id, { modulos: mods.join(',') });
+                    };
+
+                    return (
+                       <div key={p.id} className="bg-white/[0.03] border border-white/5 p-8 rounded-[2rem] flex flex-wrap items-center justify-between gap-8 transition-all hover:bg-white/[0.05] hover:border-indigo-500/20 group">
+                          <div className="flex items-center gap-6">
+                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-2xl ${p.approved ? 'bg-indigo-600 text-white' : 'bg-orange-600/20 text-orange-500'}`}>
+                                {p.nome.substring(0,1)}
+                             </div>
+                             <div>
+                                <p className="text-lg font-black text-white uppercase italic tracking-tighter">{p.nome}</p>
+                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{p.email}</p>
+                             </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-12">
+                             <div className="space-y-2">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Cargo Hierárquico</p>
+                                <select 
+                                   value={p.role} 
+                                   onChange={(e) => updateProfile(p.id, { role: e.target.value as any })}
+                                   className="bg-[#0F172A] border border-white/10 p-3 rounded-xl text-[10px] font-black text-white uppercase outline-none focus:border-indigo-500 cursor-pointer"
+                                >
+                                   <option value="analista">Analista</option>
+                                   <option value="lider">Líder</option>
+                                   <option value="admin">Administrador (TI)</option>
+                                </select>
+                             </div>
+
+                             <div className="space-y-2">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Módulos Habilitados</p>
+                                <div className="flex gap-2">
+                                   {['DP', 'FISCAL', 'CONTABIL'].map(m => {
+                                      const hasAccess = (p.modulos || '').includes(m);
+                                      return (
+                                         <button 
+                                            key={m}
+                                            onClick={() => toggleMod(m)}
+                                            className={`px-3 py-2 rounded-lg text-[8px] font-black uppercase transition-all border ${hasAccess ? 'bg-indigo-500 border-indigo-400 text-white shadow-lg' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/40'}`}
+                                         >
+                                            {m}
+                                         </button>
+                                      );
+                                   })}
+                                </div>
+                             </div>
+
+                             <div className="space-y-2">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Setor de Atuação</p>
+                                <select 
+                                   value={p.setor || ''} 
+                                   onChange={(e) => updateProfile(p.id, { setor: e.target.value as any })}
+                                   className="bg-[#0F172A] border border-white/10 p-3 rounded-xl text-[10px] font-black text-white uppercase outline-none focus:border-indigo-500 cursor-pointer"
+                                >
+                                   <option value="">NÃO DEFINIDO</option>
+                                   <option value="DP">DP</option>
+                                   <option value="FISCAL">FISCAL</option>
+                                   <option value="CONTABIL">CONTABIL</option>
+                                   <option value="FINANCEIRO">FINANCEIRO</option>
+                                </select>
+                             </div>
+
+                             <div className="space-y-2">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Status de Acesso</p>
+                                <button 
+                                   onClick={() => updateProfile(p.id, { approved: !p.approved })}
+                                   className={`w-full px-6 py-3 rounded-xl text-[10px] font-black uppercase transition-all shadow-xl ${p.approved ? 'bg-emerald-500 text-white hover:bg-emerald-400' : 'bg-orange-600 text-white hover:bg-orange-500 animate-pulse'}`}
+                                >
+                                   {p.approved ? 'Acesso Ativo' : 'Acesso Pendente'}
+                                </button>
+                             </div>
+                          </div>
+                       </div>
+                    );
+                 })}
+              </div>
+          </main>
+       </div>
+     );
   }
 
   return (
-    <div className="min-h-screen bg-[#040812] flex text-slate-200 font-sans overflow-hidden">
-      <style>{customScrollStyles}</style>
-      <aside className={`flex h-screen fixed z-50 transition-all duration-500 ${isSidebarOpen ? 'w-[300px]' : 'w-[90px]'} bg-[#0A101D] border-r border-white/5 shadow-2xl backdrop-blur-3xl`}>
-        <div className="w-[90px] flex flex-col items-center py-10 gap-10 h-full shrink-0 border-r border-white/5">
-           <div onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center cursor-pointer shadow-indigo-500/50 shadow-lg group"><Menu size={24} className="text-white group-hover:rotate-90 transition-transform"/></div>
-           <nav className="flex flex-col gap-6">
-              {(['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo', 'Usuarios'] as Visao[]).map(v => {
-                const pendingCount = v === 'Usuarios' ? allProfiles.filter(p => !p.approved).length : 0;
-                const icon = v === 'Geral' ? <Globe size={22}/>
-                           : v === 'DP' ? <Users size={22}/>
-                           : v === 'Fiscal' ? <FileText size={22}/>
-                           : v === 'Contábil' ? <BookOpen size={22}/>
-                           : v === 'Arquivo' ? <Archive size={22}/>
-                           : <UserCog size={22}/>;
-                return (
-                  <button key={v} onClick={() => setVisaoAtiva(v)} title={v}
-                    className={`relative w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                      visaoAtiva === v ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' : 'text-slate-600 hover:bg-white/5 hover:text-slate-300'
-                    }`}>
-                    {icon}
-                    {pendingCount > 0 && (
-                      <span className="absolute top-2 right-2 w-3 h-3 bg-orange-500 rounded-full animate-pulse border border-[#0A101D]" title={`${pendingCount} aguardando aprovação`}/>
-                    )}
-                  </button>
-                );
-              })}
-           </nav>
-           <button onClick={() => { localStorage.removeItem('cf_user'); setIsLoggedIn(false); }} className="mt-auto mb-12 text-rose-500/30 hover:text-rose-500"><LogOut size={24}/></button>
-        </div>
-        {isSidebarOpen && (
-           <div className="flex-1 p-10 flex flex-col animate-in slide-in-from-left duration-500">
-              <h3 className="text-[11px] font-black uppercase text-slate-600 tracking-[0.4em] mb-12 italic border-b border-white/5 pb-4">Backoffice Mestre</h3>
-              <div className="space-y-6">
-                 {['Geral', 'DP', 'Fiscal', 'Contábil', 'Arquivo', 'Usuarios'].map(m => (
-                    <button key={m} onClick={() => setVisaoAtiva(m as Visao)} className={`w-full text-left p-2 rounded-xl text-xs font-black transition-all ${visaoAtiva === m ? 'text-indigo-400 translate-x-2' : 'text-slate-500 hover:text-slate-300'}`}>{m.toUpperCase()}</button>
-                 ))}
-                 {currentUser?.role === 'admin' && (
-                    <button onClick={resetDatabase} className="mt-10 w-full text-left p-2 rounded-xl text-xs font-black text-rose-500/50 hover:text-rose-500 flex items-center gap-3"><Trash2 size={16}/> RESETAR BASE GLOBAL</button>
-                 )}
-              </div>
-           </div>
-        )}
+    <div className="flex h-screen bg-[#05080F] text-slate-200 font-['Inter',sans-serif] overflow-hidden">
+      <aside className={`bg-[#0A101D] border-r border-white/5 flex flex-col items-center py-6 gap-6 transition-all ${isSidebarExpanded ? 'w-64 px-6' : 'w-20'} shrink-0 z-50`}>
+        <div onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} className="w-12 h-12 flex items-center justify-center text-indigo-500 cursor-pointer hover:bg-white/5 rounded-2xl"><Menu size={24} /></div>
+        <SidebarIcon icon={Globe} label="GERAL" isActive={visaoAtiva === 'Geral'} onClick={() => setVisaoAtiva('Geral')} visible={true} />
+        <SidebarIcon icon={Users} label="DP" isActive={visaoAtiva === 'DP'} onClick={() => setVisaoAtiva('DP')} visible={canSeeModule('DP')} />
+        <SidebarIcon icon={FileText} label="FISCAL" isActive={visaoAtiva === 'Fiscal'} onClick={() => setVisaoAtiva('Fiscal')} visible={canSeeModule('Fiscal')} />
+        <SidebarIcon icon={BookOpen} label="CONTÁBIL" isActive={visaoAtiva === 'Contábil'} onClick={() => setVisaoAtiva('Contábil')} visible={canSeeModule('Contabil') || canSeeModule('Contábil')} />
+        <div className="w-10 h-[1px] bg-white/5 my-2" />
+        <SidebarIcon icon={DollarSign} label="COBRANÇA" isActive={visaoAtiva === 'COBRANCA'} onClick={() => setVisaoAtiva('COBRANCA')} visible={currentUser?.role === 'admin' || currentUser?.role === 'lider'} />
+        <SidebarIcon icon={Archive} label="LIXEIRA" isActive={visaoAtiva === 'Arquivo'} onClick={() => setVisaoAtiva('Arquivo')} visible={currentUser?.role === 'admin'} />
+        <div className="flex-1" />
+        <SidebarIcon icon={UserCog} label="SQUAD" isActive={(visaoAtiva as string) === 'Usuarios'} onClick={() => setVisaoAtiva('Usuarios')} visible={currentUser?.role === 'admin'} />
+        <SidebarIcon icon={LogOut} label="SAIR" onClick={() => { localStorage.removeItem('cf_user'); setIsLoggedIn(false); }} />
       </aside>
 
-      <main className={`flex-1 transition-all duration-500 ${isSidebarOpen ? 'ml-[300px]' : 'ml-[90px]'} p-4 h-screen overflow-hidden flex flex-col`}>
-        <header className="flex justify-between items-center mb-2 shrink-0">
-          <div className="flex items-center gap-6">
-            <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">{visaoAtiva.replace('Arquivo', 'OFF-BOARDING')}</h2>
-            <div className="flex gap-2">
-                <button onClick={() => setIsOnboardingTab(false)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 text-slate-600'}`}>Carteira Mensal</button>
-                <button onClick={() => setIsOnboardingTab(true)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all ${isOnboardingTab ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-600'}`}>Trilha Onboarding 🔥</button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-             <div className="flex gap-4 items-center bg-[#0A101D] px-3 py-2 rounded-xl border border-white/5">
-                 <label className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
-                    <input type="radio" checked={isGlobalUpload} onChange={() => setIsGlobalUpload(true)} className="accent-indigo-500 w-3 h-3"/>
-                    GLOBAL
-                 </label>
-                 <label className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 cursor-pointer hover:text-white transition-colors">
-                    <input type="radio" checked={!isGlobalUpload} onChange={() => setIsGlobalUpload(false)} className="accent-indigo-500 w-3 h-3"/>
-                    APENAS AQUI
-                 </label>
+      <main className="flex-1 flex flex-col bg-[#0A101D] min-w-0">
+        <header className="h-[64px] border-b border-white/5 px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+             <h1 className="text-sm font-black text-white italic uppercase tracking-tighter">{visaoAtiva}</h1>
+             {visaoAtiva !== 'COBRANCA' && visaoAtiva !== 'Arquivo' && (
+               <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/5 uppercase select-none">
+                  <button onClick={() => setIsOnboardingTab(false)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase ${!isOnboardingTab ? 'bg-indigo-600 text-white shadow-lg' : 'text-white/30 hover:text-white'}`}>CARTEIRA</button>
+                  <button onClick={() => setIsOnboardingTab(true)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase ${isOnboardingTab ? 'bg-orange-600 text-white shadow-lg' : 'text-white/30 hover:text-white'}`}>ONBOARDING</button>
+               </div>
+             )}
+             <div className="flex items-center bg-[#0A101D] border border-white/5 p-1 rounded-xl shadow-inner relative">
+                <button onClick={() => setViewState(v => {
+                   const m = v.month === 0 ? 11 : v.month - 1;
+                   const y = v.month === 0 ? v.year - 1 : v.year;
+                   return { month: m, year: y };
+                })} className="p-2 text-white/40 hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-all"><ChevronLeft size={16}/></button>
+                <div onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)} className="px-6 py-1.5 min-w-[140px] text-center border-x border-white/5 cursor-pointer">
+                   <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{MESES[viewState.month]}</p>
+                   <p className="text-[8px] font-bold text-white/20">{viewState.year}</p>
+                </div>
+                <button onClick={() => setViewState(v => {
+                   const m = v.month === 11 ? 0 : v.month + 1;
+                   const y = v.month === 11 ? v.year + 1 : v.year;
+                   return { month: m, year: y };
+                })} className="p-2 text-white/40 hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-all"><ChevronRight size={16}/></button>
+                {isMonthPickerOpen && (
+                   <div className="absolute top-full left-0 mt-4 bg-[#0A101D] border border-white/10 p-4 rounded-2xl shadow-2xl z-[100] grid grid-cols-3 gap-2">
+                      {MESES.map((m, i) => (
+                         <button key={m} onClick={() => { setViewState(v => ({...v, month: i})); setIsMonthPickerOpen(false); }} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewState.month === i ? 'bg-indigo-600 text-white shadow-lg' : 'text-white/30 hover:bg-white/5 hover:text-white'}`}>{m.substring(0,3)}</button>
+                      ))}
+                   </div>
+                )}
              </div>
-             <label className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase flex items-center gap-2 shadow-indigo-500/20 shadow-lg transition-all active:scale-95 cursor-pointer hover:bg-indigo-500"><Upload size={13}/> IMPORTAR CSV<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload}/></label>
+             <button onClick={() => setViewState({ month: new Date().getMonth(), year: new Date().getFullYear() })} className="px-3 py-2 text-[8px] font-black text-indigo-500 hover:text-white bg-indigo-500/10 rounded-xl uppercase transition-all tracking-tighter">HOJE</button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+             <div className="flex items-center bg-white/5 rounded-xl border border-white/10 px-3 h-10 gap-2 min-w-[200px]">
+                <Search size={14} className="text-white/20" />
+                <input placeholder="RAZÃO OU CNPJ..." className="bg-transparent text-[8px] font-black text-white outline-none w-full uppercase placeholder:text-white/10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+             </div>
+
+             <select 
+                className="h-10 px-4 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-indigo-400 uppercase outline-none cursor-pointer"
+                value={filterResponsavel}
+                onChange={e => setFilterResponsavel(e.target.value)}
+             >
+                <option value="Todos" className="bg-[#0A101D]">ANALISTAS...</option>
+                {[...analistasDP, ...analistasFiscal, ...analistasContabil].sort().map(a => <option key={a} value={a} className="bg-[#0A101D]">{a}</option>)}
+             </select>
+
+             <select 
+                className="h-10 px-4 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-indigo-400 uppercase outline-none cursor-pointer"
+                value={filterFranquia}
+                onChange={e => setFilterFranquia(e.target.value)}
+             >
+                <option value="Todas" className="bg-[#0A101D]">FRANQUIAS...</option>
+                {Array.from(new Set(empresas.map(e => e.franquia))).sort().map(f => <option key={f} value={f} className="bg-[#0A101D]">{f}</option>)}
+             </select>
+
+             <label className="h-10 px-4 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 text-[8px] font-black text-white cursor-pointer hover:bg-white/10 transition-all uppercase shadow-md active:scale-95">
+                <Upload size={14} /> IMPORTAR
+                <input type="file" className="hidden" accept=".csv" onChange={handleImport} />
+             </label>
+             <button onClick={() => setIsNewModalOpen(true)} className="h-10 w-10 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-xl hover:bg-indigo-500 transition-all transform active:scale-95"><Plus size={20} /></button>
           </div>
         </header>
 
-        {visaoAtiva === 'Usuarios' ? (
-           <div className="flex-1 min-h-0 overflow-y-auto bg-[#0A101D]/50 rounded-[2rem] p-6 border border-white/5 custom-scrollbar">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-base font-black text-white italic uppercase tracking-widest">Gestão de Analistas</h3>
-                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{allProfiles.length} usuários no sistema</span>
-              </div>
-              <div className="space-y-3">
-                 {allProfiles.map(p => {
-                   const mods = (p.modulos || 'DP,Fiscal,Contabil,Geral').split(',');
-                   const toggleMod = (mod: string) => {
-                     const newMods = mods.includes(mod) ? mods.filter(m => m !== mod) : [...mods, mod];
-                     updateProfile(p.id, { modulos: newMods.join(',') });
-                   };
-                   return (
-                     <div key={p.id} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-                       {/* STATUS BOLINHA */}
-                       <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.approved ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse'}`}></div>
+        <section className="px-8 mt-6 grid grid-cols-5 gap-4 shrink-0">
+           <div onClick={() => setStatusFilter(null)} className={`p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all ${!statusFilter ? 'ring-2 ring-indigo-500/30' : ''}`}><p className="text-[9px] font-black text-white/20 uppercase tracking-tighter">Total Geral {visaoAtiva === 'COBRANCA' ? 'Financeiro' : 'Operacional'}</p><h3 className="text-2xl font-black text-white tabular-nums">{filtered.length}</h3></div>
+           <div onClick={() => setStatusFilter(visaoAtiva === 'COBRANCA' ? 'PAGO OK' : '100% CONCLUIDO')} className={`p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all ${statusFilter === (visaoAtiva === 'COBRANCA' ? 'PAGO OK' : '100% CONCLUIDO') ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : ''}`}><p className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter">{visaoAtiva === 'COBRANCA' ? 'PAGO OK' : '100% CONCLUIDO'}</p><h3 className="text-2xl font-black text-emerald-400 tabular-nums">{stats.concluida}</h3></div>
+           <div onClick={() => setStatusFilter(visaoAtiva === 'COBRANCA' ? 'AGENDADO' : 'EM ANDAMENTO')} className={`p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all ${statusFilter === (visaoAtiva === 'COBRANCA' ? 'AGENDADO' : 'EM ANDAMENTO') ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : ''}`}><p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">{visaoAtiva === 'COBRANCA' ? 'AGENDADO' : 'EM ANDAMENTO'}</p><h3 className="text-2xl font-black text-indigo-400 tabular-nums">{stats.emAndamento}</h3></div>
+           <div onClick={() => setStatusFilter(visaoAtiva === 'COBRANCA' ? 'A COBRAR' : 'PENDENTE')} className={`p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all ${statusFilter === (visaoAtiva === 'COBRANCA' ? 'A COBRAR' : 'PENDENTE') ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : ''}`}><p className="text-[9px] font-black text-red-400 uppercase tracking-tighter">{visaoAtiva === 'COBRANCA' ? 'A COBRAR' : 'PENDENTE'}</p><h3 className="text-2xl font-black text-red-400 tabular-nums">{stats.pendente}</h3></div>
+           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl"><p className="text-[9px] font-black text-red-500 uppercase tracking-tighter">FORA DO PRAZO</p><h3 className="text-2xl font-black text-red-500 tabular-nums">{stats.foraDoPrazo}</h3></div>
+        </section>
 
-                       {/* EMAIL */}
-                       <span className="text-[9px] font-black text-slate-600 uppercase min-w-[180px]">{p.email}</span>
-
-                       {/* NOME EDITAVEL */}
-                       <input
-                         className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-indigo-500/50 transition-all min-w-[150px]"
-                         value={p.nome || ''}
-                         placeholder="Nome do analista..."
-                         onChange={e => setAllProfiles(prev => prev.map(u => u.id === p.id ? {...u, nome: e.target.value} : u))}
-                         onBlur={e => updateProfile(p.id, { nome: e.target.value })}
-                       />
-
-                       {/* ROLE */}
-                       <select
-                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border-none cursor-pointer outline-none ${p.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-slate-400'}`}
-                         value={p.role}
-                         onChange={e => updateProfile(p.id, { role: e.target.value as 'admin' | 'analista' })}
-                       >
-                         <option value="analista" className="bg-[#0A101D]">ANALISTA</option>
-                         <option value="admin" className="bg-[#0A101D]">ADMIN</option>
-                       </select>
-
-                       {/* MODULOS */}
-                       <div className="flex gap-1.5 flex-1">
-                         {['Geral','DP','Fiscal','Contábil'].map(mod => (
-                           <button
-                             key={mod}
-                             onClick={() => toggleMod(mod)}
-                             className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase transition-all border ${
-                               mods.includes(mod)
-                                 ? mod==='DP' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                                 : mod==='Fiscal' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                 : mod==='Contábil' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                                 : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
-                                 : 'bg-white/[0.03] text-slate-700 border-white/5'
-                             }`}
-                           >{mod}</button>
-                         ))}
-                       </div>
-
-                       {/* APROVAR/REVOGAR */}
-                       <button
-                         onClick={() => toggleUserApproval(p.id, p.approved)}
-                         className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all shrink-0 cursor-pointer ${
-                           p.approved
-                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20 hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-400/30'
-                             : 'bg-orange-500/10 text-orange-400 border-orange-400/20 hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-400/30 animate-pulse'
-                         }`}
-                       >{p.approved ? 'ATIVO ✓' : 'APROVAR'}</button>
-                     </div>
-                   );
-                 })}
+        {selectedIds.length > 0 && (
+           <div className="px-8 mt-4">
+              <div className="bg-indigo-600 p-3 rounded-xl flex items-center justify-between shadow-2xl relative z-30">
+                 <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-black text-white uppercase ml-2">{selectedIds.length} selecionados</span>
+                    <select className="bg-[#0A101D] border border-white/10 rounded-lg px-4 py-2 text-[10px] text-white font-black outline-none" onChange={(e) => handleBulkAssign(e.target.value)}>
+                       <option value="">ATRIBUIR ANALISTA...</option>
+                       {[...analistasDP, ...analistasFiscal, ...analistasContabil].sort().map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                    <select className="bg-[#0A101D] border border-white/10 rounded-lg px-4 py-2 text-[10px] text-white font-black outline-none" onChange={(e) => handleBulkStatus(e.target.value)}>
+                       <option value="">STATUS EM LOTE...</option>
+                       <option value="100% CONCLUIDO">100% CONCLUIDO</option>
+                       <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+                       <option value="PENDENTE">PENDENTE</option>
+                    </select>
+                    <button onClick={() => setSelectedIds([])} className="text-[9px] font-black text-white/30 hover:text-white uppercase transition-all">Cancelar</button>
+                 </div>
               </div>
            </div>
-         ) : (
-            <>
-               <div className="flex gap-2 mb-2 shrink-0">
-                 <div className="relative flex-1 group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-indigo-400 transition-colors" size={14}/><input type="text" placeholder="Pesquisar Empresa, Grupo ou CNPJ..." className="w-full pl-10 pr-4 py-2 bg-[#0A101D] border border-white/5 rounded-xl text-[10px] text-white font-black outline-none focus:border-indigo-500/30 transition-all placeholder-slate-800" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/></div>
-                 <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-xl px-4 py-2 text-[9px] font-black outline-none min-w-[160px]" value={filterFranquia} onChange={e=>setFilterFranquia(e.target.value)}>
-                     <option value="Todas">FILTRAR GRUPO</option>
-                     {Array.from(new Set(empresas.map(e => e.franquia))).sort().map(f => <option key={f} value={f}>{f?.toUpperCase()}</option>)}
-                 </select>
-                 <select className="bg-[#0A101D] border border-white/5 text-slate-600 rounded-xl px-4 py-2 text-[9px] font-black outline-none min-w-[160px]" value={filterResponsavel} onChange={e=>setFilterResponsavel(e.target.value)}>
-                     <option value="Todos">FILTRAR ANALISTA</option>
-                     {Array.from(new Set(empresas.map(e => e.responsavel))).sort().map(r => <option key={r} value={r}>{r?.toUpperCase()}</option>)}
-                 </select>
-              </div>
-
-              <div className="bg-[#0A101D]/50 rounded-[2rem] border border-white/5 flex flex-col flex-1 min-h-0 shadow-2xl w-full">
-                <div className="flex-1 min-h-0 overflow-x-scroll overflow-y-scroll pb-2 px-2 custom-scrollbar">
-                  <div className="min-w-[1800px]">
-                    <table className="w-full text-left border-separate border-spacing-0">
-                      <thead>
-                        <tr className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em]">
-                          <th className="px-3 py-3 border-b border-white/5 sticky left-0 bg-[#161B2A] z-40 text-center"><Pencil size={12}/></th>
-                          <th className="px-4 py-3 border-b border-white/5 sticky left-[48px] bg-[#161B2A] z-30 font-bold min-w-[160px]">STATUS</th>
-                          <th className="px-4 py-3 border-b border-white/5 min-w-[200px]">EMPRESA</th>
-                          <th className="px-4 py-3 border-b border-white/5 whitespace-nowrap">CNPJ</th>
-                          <th className="px-4 py-3 border-b border-white/5">GRUPO</th>
-                          <th className="px-4 py-3 border-b border-white/5">ANALISTA</th>
-                          {baseSector === 'Geral' ? (
-                            <>
-                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR DP</th>
-                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR FISCAL</th>
-                              <th className="px-3 py-3 border-b border-white/5 text-center">SETOR CONTÁBIL</th>
-                            </>
-                          ) : baseSector === 'DP' ? (
-                            <>
-                              {isOnboardingTab ? (
-                                <>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center">TRIB.</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center">ATIVIDADE</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center font-bold text-indigo-400">FUNC.</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center">SISTEMA</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center">VAR</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center">ADIA</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center text-orange-400">COMPET.</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="PI CONCLUIDO">PI</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="ONETY">1T</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="PROCURACAO">PROC.</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center" title="EMPRESTIMO CONSIGNADO">CONS.</th>
-                                  <th className="px-3 py-3 border-b border-white/5 text-center text-[8px]" title="CONVENCAO COLETIVA">C.COL</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th className="px-4 py-3 border-b border-white/5 text-center font-bold text-indigo-400">QTD FOLHA</th>
-                                  <th className="px-4 py-3 border-b border-white/5 text-center font-bold text-purple-400">PRO-L</th>
-                                  <th className="px-4 py-3 border-b border-white/5 text-center">VAR</th>
-                                  <th className="px-4 py-3 border-b border-white/5 text-center">ADIA</th>
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <th className="px-4 py-3 border-b border-white/5">TRIBUTAÇÃO</th>
-                              <th className="px-4 py-3 border-b border-white/5">SISTEMA</th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {filtered.map(emp => (
-                          <tr key={emp.id} className="hover:bg-white/[0.04] transition-all group cursor-pointer">
-                            <td className="px-2 py-2 whitespace-nowrap sticky left-0 bg-[#0A101D]/80 backdrop-blur-md z-20 text-center">
-                               <button onClick={() => { setSelectedEmpresa(emp); setIsEditModalOpen(true); }} className="p-1.5 bg-white/5 rounded-lg text-slate-600 group-hover:text-white group-hover:bg-white/10 transition-all"><Pencil size={12}/></button>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap sticky left-[48px] bg-[#0A101D]/80 backdrop-blur-md z-10">
-                               {baseSector === 'Geral' ? (
-                                  <div className="flex gap-2 justify-start items-center">
-                                     <div title="DP" className={`w-2 h-2 rounded-full ${emp.bkoDP ? 'bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.6)]' : 'bg-slate-800'}`}></div>
-                                     <div title="Fiscal" className={`w-2 h-2 rounded-full ${emp.bkoFiscal ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' : 'bg-slate-800'}`}></div>
-                                     <div title="Contábil" className={`w-2 h-2 rounded-full ${emp.bkoContabil ? 'bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.6)]' : 'bg-slate-800'}`}></div>
-                                  </div>
-                               ) : (
-                                  <select 
-                                    value={isOnboardingTab ? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia} 
-                                    onChange={(e) => updateEmpresaDirectly(emp.id, isOnboardingTab ? (baseSector==='DP'?{faseOnbDP:e.target.value}:baseSector==='Fiscal'?{faseOnbFiscal:e.target.value}:{faseOnbContabil:e.target.value}) : {statusCompetencia: e.target.value})}
-                                    className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase border-none cursor-pointer max-w-[155px] ${getStatusColor(isOnboardingTab? (baseSector==='DP'?emp.faseOnbDP:baseSector==='Fiscal'?emp.faseOnbFiscal:emp.faseOnbContabil) : emp.statusCompetencia)}`}
-                                  >
-                                     {(isOnboardingTab ? statusOnboarding : (baseSector==='DP'?statusOptionsDP : statusOptionsFiscalContabil)).map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}
-                                  </select>
-                               )}
-                            </td>
-                            <td className="px-4 py-2"><span className="text-[10px] font-black text-white uppercase group-hover:text-indigo-400 transition-colors whitespace-nowrap">{emp.nome}</span></td>
-                            <td className="px-4 py-2 font-mono text-[9px] text-slate-500 whitespace-nowrap">{emp.cnpj}</td>
-                            <td className="px-4 py-2"><span className="text-[8px] font-black text-slate-400 bg-white/5 px-3 py-1 rounded-lg border border-white/5 uppercase whitespace-nowrap">{emp.franquia}</span></td>
-                            <td className="px-4 py-2"><span className={`text-[9px] font-black text-${accent === 'rose' ? 'rose' : accent}-400 uppercase whitespace-nowrap`}>{emp.responsavel}</span></td>
-                             
-                             {baseSector === 'Geral' ? (
-                               <>
-                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoDP ? 'Ativo' : '-'}</td>
-                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoFiscal ? 'Ativo' : '-'}</td>
-                                 <td className="px-3 py-2 text-center text-[9px] font-black text-slate-600 uppercase italic">{emp.bkoContabil ? 'Ativo' : '-'}</td>
-                               </>
-                            ) : baseSector === 'DP' ? (
-                               <>
-                                  {isOnboardingTab ? (
-                                    <>
-                                      <td className="px-3 py-2 text-center text-[9px] font-black text-slate-500 uppercase">{emp.tributacao?.substring(0,3)}</td>
-                                      <td className="px-3 py-2 text-center text-[9px] font-black text-slate-300 uppercase whitespace-nowrap">{emp.atividade || '-'}</td>
-                                      <td className="px-3 py-2 text-center"><div className="mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300">{emp.qtdFuncionarios || '-'}</div></td>
-                                      <td className="px-3 py-2 text-center"><div className="mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300">{emp.qtdProlabore || '-'}</div></td>
-                                      <td className="px-3 py-2 text-center text-[8px] font-black text-slate-600 italic uppercase whitespace-nowrap">{emp.sistemaBase}</td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-7 h-4 rounded flex items-center justify-center font-black text-[7px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-7 h-4 rounded flex items-center justify-center font-black text-[7px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
-                                      <td className="px-3 py-2 text-center text-[9px] font-black text-orange-400/70 whitespace-nowrap">{emp.competencia || '-'}</td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.piConcluido ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-white/5'}`}>{emp.piConcluido && <CheckCircle2 size={9} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.onety ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-white/5'}`}>{emp.onety && <Rocket size={9} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.procuracao ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5'}`}>{emp.procuracao && <FileText size={9} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.emprestimoConsignado ? 'bg-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white/5'}`}>{emp.emprestimoConsignado && <ShieldCheck size={9} className="text-white"/>}</div></td>
-                                      <td className="px-2 py-2 text-center"><div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center ${emp.convencaoColetiva ? 'bg-rose-500 shadow-lg shadow-rose-500/20' : 'bg-white/5'}`}>{emp.convencaoColetiva && <Users size={9} className="text-white"/>}</div></td>
-                                    </>
-                                  ) : (
-                                    <>
-                                       <td className="px-4 py-2 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-indigo-500/10 text-indigo-300">{emp.qtdFuncionarios || '-'}</div></td>
-                                       <td className="px-4 py-2 text-center"><div className="mx-auto w-10 h-5 rounded-lg flex items-center justify-center font-black text-[9px] bg-purple-500/10 text-purple-300">{emp.qtdProlabore || '-'}</div></td>
-                                       <td className="px-4 py-2 text-center"><div className={`mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] ${emp.temVariavel ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/5 text-slate-800'}`}>VAR</div></td>
-                                       <td className="px-4 py-2 text-center"><div className={`mx-auto w-9 h-5 rounded-lg flex items-center justify-center font-black text-[9px] ${emp.temAdiantamento ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-white/5 text-slate-800'}`}>ADIA</div></td>
-                                    </>
-                                  )}
-                               </>
-                            ) : (
-                               <>
-                                  <td className="px-4 py-2 text-[9px] font-black text-white/50 uppercase whitespace-nowrap">{emp.tributacao}</td>
-                                  <td className="px-4 py-2 text-[9px] font-black text-white/30 uppercase italic whitespace-nowrap">{emp.sistemaBase}</td>
-                               </>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-           </>
         )}
+
+          <section className="flex-1 overflow-auto custom-scrollbar p-8 pt-0">
+           {visaoAtiva === 'COBRANCA' ? (
+              <div className="w-full min-w-[1200px]">
+                  {/* TOTALIZADOR DE COBRANÇA */}
+                  <div className="flex gap-4 mb-4">
+                     <div className="flex-1 bg-white/[0.03] p-4 rounded-2xl border border-white/5">
+                        <p className="text-[9px] font-black text-white/20 uppercase">Total de Unidades</p>
+                        <h4 className="text-xl font-black text-white">{stats.totalFranquias}</h4>
+                     </div>
+                     <div className="flex-1 bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+                        <p className="text-[9px] font-black text-emerald-500/60 uppercase">Receita Paga</p>
+                        <h4 className="text-xl font-black text-emerald-500">R$ {stats.receitaPaga.toFixed(2)}</h4>
+                     </div>
+                     <div className="flex-1 bg-red-500/10 p-4 rounded-2xl border border-red-500/20">
+                        <p className="text-[9px] font-black text-red-500/60 uppercase">Em Aberto</p>
+                        <h4 className="text-xl font-black text-red-500">R$ {(stats.totalReceita - stats.receitaPaga).toFixed(2)}</h4>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-[40px_1.5fr_1fr_100px_100px_120px] gap-4 px-6 py-4 bg-[#0A101D] border-b border-white/5 rounded-t-2xl items-center sticky top-[-1px] z-[40] shadow-xl">
+                     <span className="text-[9px] font-black text-white/20 uppercase text-center">Edit</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase">Franquia / Responsável</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase text-center">Setores e Valores</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase text-center">Vencimento</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase text-right">Saldo Total</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase text-center">Status Geral</span>
+                  </div>
+                 <div className="divide-y divide-white/[0.02] bg-white/[0.01] rounded-b-2xl border-x border-b border-white/5">
+                    {filtered.map(emp => {
+                        const dpV = emp.bkoDP ? (emp.valorDP || 200) : 0;
+                        const fisV = emp.bkoFiscal ? (emp.valorFiscal || 200) : 0;
+                        const conV = emp.bkoContabil ? (emp.valorContabil || 200) : 0;
+                        const totalEmp = emp.valorMensalidade || (dpV + fisV + conV);
+                        
+                        return (
+                           <div key={emp.id} className="grid grid-cols-[40px_1.5fr_1fr_100px_100px_120px] gap-4 items-center py-5 px-6 hover:bg-white/[0.03] transition-all group border-b border-white/[0.02]">
+                              <div className="flex justify-center"><button onClick={() => { setEditingEmpresa(emp); setIsEditModalOpen(true); }} className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all shadow-lg active:scale-95"><Pencil size={12}/></button></div>
+                              <div>
+                                 <p className="text-[10px] font-black text-white uppercase italic truncate max-w-[200px]">{emp.franquia || emp.nome}</p>
+                                 <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{emp.responsavel || 'FINANCEIRO MATRIZ'}</p>
+                              </div>
+                              
+                              <div className="flex flex-wrap gap-2 justify-center max-w-[150px] mx-auto py-1">
+                                 {emp.bkoDP && (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                       <button onClick={()=>handleUpdate(emp.id, {pagoDP: !emp.pagoDP})} className={`px-2 py-1 rounded text-[6px] font-black uppercase transition-all shadow-md ${emp.pagoDP ? 'bg-indigo-600 text-white' : 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/10'}`}>DP</button>
+                                       <p className="text-[6px] font-black text-white/10 italic">R$ {dpV}</p>
+                                    </div>
+                                 )}
+                                 {emp.bkoFiscal && (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                       <button onClick={()=>handleUpdate(emp.id, {pagoFiscal: !emp.pagoFiscal})} className={`px-2 py-1 rounded text-[6px] font-black uppercase transition-all shadow-md ${emp.pagoFiscal ? 'bg-amber-500 text-white' : 'bg-amber-500/10 text-amber-500 border border-amber-500/10'}`}>FISC</button>
+                                       <p className="text-[6px] font-black text-white/10 italic">R$ {fisV}</p>
+                                    </div>
+                                 )}
+                                 {emp.bkoContabil && (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                       <button onClick={()=>handleUpdate(emp.id, {pagoContabil: !emp.pagoContabil})} className={`px-2 py-1 rounded text-[6px] font-black uppercase transition-all shadow-md ${emp.pagoContabil ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10'}`}>CONT</button>
+                                       <p className="text-[6px] font-black text-white/10 italic">R$ {conV}</p>
+                                    </div>
+                                 )}
+                              </div>
+
+                              <div className="flex justify-center flex-col items-center">
+                                 <h4 className="text-sm font-black text-indigo-400 tracking-tighter leading-none">{emp.dataVencimento?.split('/')[0] || '--'}</h4>
+                                 <p className="text-[7px] font-black text-white/20 uppercase tracking-widest">{emp.dataVencimento?.split('/')[1] || '---'}</p>
+                              </div>
+
+                              <div className="text-right tabular-nums text-[10px] font-black text-white bg-white/[0.04] px-2 py-1.5 rounded-lg border border-white/5 shadow-inner">
+                                 R$ {totalEmp.toFixed(2)}
+                              </div>
+
+                              <div className="flex justify-center">
+                                 <select 
+                                    value={emp.statusFinanceiro || 'PENDENTE'} 
+                                    onChange={(e) => handleUpdate(emp.id, { statusFinanceiro: e.target.value as any })}
+                                    className={`px-3 py-1.5 rounded-lg text-[7px] font-black uppercase border-0 outline-none shadow-xl cursor-pointer transition-all ${
+                                       emp.statusFinanceiro === 'CONCLUÍDO' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/20' : 
+                                       emp.statusFinanceiro === 'EM ANDAMENTO' ? 'bg-amber-600/20 text-amber-400 border border-amber-500/20' : 
+                                       'bg-slate-800 text-slate-400 border border-white/5'
+                                    }`}
+                                 >
+                                    <option value="PENDENTE">A COBRAR</option>
+                                    <option value="EM ANDAMENTO">AGENDADO</option>
+                                    <option value="CONCLUÍDO">PAGO OK</option>
+                                 </select>
+                              </div>
+                           </div>
+                        );
+                     })}
+                 </div>
+              </div>
+           ) : (
+              <div className="w-full min-w-[1400px]">
+                 <div className="grid grid-cols-[40px_40px_130px_1.5fr_130px_90px_100px_60px_50px_100px_90px_80px_40px] gap-4 px-6 py-4 bg-[#0A101D] border-b border-white/5 rounded-t-2xl items-center sticky top-0 z-20 shadow-xl">
+                    <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={e => setSelectedIds(e.target.checked ? filtered.map(x=>x.id) : [])}/>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-center">Edit</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase">Status</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase">Unidade</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase">CNPJ</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-center">Franq</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase">Analista</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-right">P-L</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-right">Func</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-center">Trib</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase">Sistema</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-center">Início</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase text-center">Link</span>
+                 </div>
+
+                 <div className="divide-y divide-white/[0.02] bg-white/[0.01] rounded-b-2xl border-x border-b border-white/5">
+                    {filtered.map(emp => (
+                       <div key={emp.id} className="grid grid-cols-[40px_40px_130px_1.5fr_130px_90px_100px_60px_50px_100px_90px_80px_40px] gap-4 items-center py-4 px-6 hover:bg-white/[0.03] transition-all group">
+                          <div className="flex justify-center"><input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5" checked={selectedIds.includes(emp.id)} onChange={() => setSelectedIds(prev => prev.includes(emp.id) ? prev.filter(i=>i!==emp.id) : [...prev, emp.id])}/></div>
+                          <div className="flex justify-center gap-1">
+                             <button onClick={() => { setEditingEmpresa(emp); setIsEditModalOpen(true); }} className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all shadow-lg active:scale-95"><Pencil size={12}/></button>
+                             {emp.isArchived ? (
+                                <button onClick={() => restoreEmpresa(emp.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all opacity-0 group-hover:opacity-100" title="RESTAURAR"><RefreshCcw size={12}/></button>
+                             ) : (
+                                <button onClick={() => archiveEmpresa(emp.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100" title="ARQUIVAR"><Trash2 size={12}/></button>
+                             )}
+                          </div>
+                          <div className="flex justify-center">
+                             <div onClick={() => cycleStatus(emp.id, emp.statusCompetencia)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm hover:brightness-110 active:scale-95 whitespace-nowrap ${emp.statusCompetencia.startsWith('100% CONCLUIDO') ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : emp.statusCompetencia.startsWith('EM ANDAMENTO') ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                {emp.statusCompetencia.split('|')[0]}
+                             </div>
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                             <span className="text-[10px] font-black text-white/90 uppercase truncate">{emp.nome}</span>
+                             <div className="flex items-center gap-1 mt-1">
+                                {emp.bkoDP && <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-[6px] font-black uppercase">DP</span>}
+                                {emp.bkoFiscal && <span className="px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 text-[6px] font-black uppercase">FISCAL</span>}
+                                {emp.bkoContabil && <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[6px] font-black uppercase">CONTABIL</span>}
+                                {checkOverdue(emp) && <AlertTriangle size={12} className="text-red-500 animate-pulse ml-1"/>}
+                             </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-white/30 tabular-nums">{emp.cnpj ? formatCNPJ(emp.cnpj) : '---'}</span>
+                          <span className="text-[8px] font-black text-white/20 uppercase text-center truncate">{(emp.franquia || '---').toUpperCase()}</span>
+                          <span className="text-[9px] font-black text-indigo-400/60 uppercase italic truncate">{(emp.responsavel || '---').toUpperCase()}</span>
+                          <span className="text-[10px] font-mono text-white/60 text-right">{emp.pro_l || '0'}</span>
+                          <span className="text-[10px] font-mono text-white/60 text-right">{emp.qtd_func || '0'}</span>
+                          <span className="text-[9px] font-black text-indigo-500/40 uppercase text-center block">{emp.tributacao || '---'}</span>
+                          <span className="text-[8px] font-bold text-white/20 uppercase text-center truncate">{emp.sistema || '---'}</span>
+                          <span className="text-[8px] font-mono text-indigo-400/50 uppercase text-center">{emp.inicio_onboarding || '---'}</span>
+                          <div className="flex justify-center">
+                             <button onClick={() => { setSelectedEmpresa(emp); setIsPRDrawerOpen(true); }} className={`transition-all ${emp.link_onetty ? 'text-indigo-400 hover:text-white' : 'text-white/10 hover:text-white/20'}`}><ExternalLink size={14}/></button>
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+           )}
+        </section>
       </main>
 
-      {isEditModalOpen && selectedEmpresa && (
-         <div className="fixed inset-0 z-[110] flex items-center justify-center p-12 backdrop-blur-3xl bg-black/80">
-            <div className="bg-[#0A101D] border border-white/10 rounded-[6rem] w-full max-w-6xl p-24 shadow-2xl relative max-h-[95vh] overflow-auto scrollbar-hide animate-in zoom-in-95 duration-300">
-               <button onClick={() => setIsEditModalOpen(false)} className="absolute top-16 right-16 text-slate-600 hover:text-white transition-all"><X size={48}/></button>
-               <h3 className="text-4xl font-black text-white italic mb-12 text-center uppercase tracking-tighter decoration-indigo-600 underline decoration-4 underline-offset-8">Ajuste Master Patrocinado</h3>
-               
-               <div className="grid grid-cols-2 gap-12">
-                  <div className="space-y-4"><label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Razão Social</label><input className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none" value={selectedEmpresa.nome} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {nome: e.target.value})}/></div>
-                  <div className="space-y-4">
-                     <label className="text-xs font-black text-slate-600 ml-8 uppercase tracking-widest">Analista Responsável</label>
-                     <select
-                       className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-xl text-white uppercase font-black focus:border-indigo-500 transition-all outline-none cursor-pointer"
-                       value={selectedEmpresa.responsavel || ''}
-                       onChange={e => updateEmpresaDirectly(selectedEmpresa!.id, {responsavel: e.target.value})}
-                     >
-                       <option value="" className="bg-[#0A101D]">-- Selecionar Analista --</option>
-                       {(baseSector === 'DP' ? analistasDP : baseSector === 'Fiscal' ? analistasFiscal : baseSector === 'Contábil' ? analistasContabil : [...analistasDP, ...analistasFiscal]).map(a => <option key={a} value={a} className="bg-[#0A101D]">{a.toUpperCase()}</option>)}
-                     </select>
-                   </div>
-                  
-                  <div className="col-span-2 grid grid-cols-3 gap-8 bg-black/30 p-12 rounded-[4rem] border border-white/5 mt-8 text-slate-200">
-                     <div className="space-y-6">
-                        <h4 className="text-indigo-400 text-xs font-black uppercase tracking-widest border-b border-indigo-400/20 pb-4">Setor DP</h4>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Atividade</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.atividade} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {atividade: e.target.value})}/></div>
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Folha</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdFuncionarios} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdFuncionarios: e.target.value})}/></div>
-                           <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Qtd Pro-L</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.qtdProlabore} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {qtdProlabore: e.target.value})}/></div>
+      {/* MODAL EDIÇÃO */}
+      {isEditModalOpen && editingEmpresa && (
+         <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-[#0A101D] border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95">
+               <div className="p-6 border-b border-white/5 flex justify-between items-center"><div><p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Painel de Edição</p><h2 className="text-sm font-black text-white uppercase italic">{editingEmpresa?.nome}</h2></div><button onClick={()=>setIsEditModalOpen(false)} className="text-white/20 hover:text-white"><X size={20}/></button></div>
+               <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-1.5"><label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">Razão Social</label><input className="w-full bg-[#0F172A] border border-white/10 p-4 rounded-xl text-xs text-white uppercase outline-none font-bold" value={editingEmpresa?.nome || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, nome: e.target.value.toUpperCase()}:null)}/></div>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-1.5"><label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">CNPJ</label><input className="w-full bg-[#0F172A] border border-white/10 p-4 rounded-xl text-xs text-white outline-none font-mono" value={editingEmpresa?.cnpj || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, cnpj: e.target.value}:null)}/></div>
+                     <div className="space-y-1.5"><label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">Analista</label>
+                                 <select className="w-full bg-[#0F172A] border border-white/10 p-4 rounded-xl text-xs text-white font-bold outline-none" value={editingEmpresa?.responsavel || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, responsavel: e.target.value}:null)}>
+                                    <option value="">{visaoAtiva === 'COBRANCA' ? 'SELECIONE O ANALISTA FINANCEIRO...' : 'SELECIONE O ANALISTA...'}</option>
+                                    {(visaoAtiva === 'COBRANCA' ? analistasFinanceiro : 
+                                      visaoAtiva === 'DP' ? analistasDP : 
+                                      visaoAtiva === 'Fiscal' ? analistasFiscal : 
+                                      analistasContabil).map(a => <option key={a} value={a}>{a}</option>)}
+                                 </select>
+                     </div>
+                  </div>
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                     <label className="text-[9px] font-black text-white/20 uppercase ml-2">Detalhamento Setorial</label>
+                     <div className="grid grid-cols-3 gap-4">
+                        {/* DP */}
+                        <div className={`p-4 rounded-2xl border transition-all ${editingEmpresa?.bkoDP ? 'bg-indigo-600/5 border-indigo-500/20' : 'bg-white/[0.02] border-white/5 opacity-40'}`}>
+                           <label className="flex items-center gap-2 mb-3 cursor-pointer"><input type="checkbox" checked={editingEmpresa?.bkoDP} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, bkoDP: e.target.checked}:null)} className="w-3 h-3 rounded bg-white/5"/><span className="text-[10px] font-black text-white uppercase">DP</span></label>
+                           <input placeholder="Valor" type="number" className="w-full bg-black/20 border border-white/5 p-3 rounded-xl text-[11px] font-black text-white" value={editingEmpresa?.valorDP || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, valorDP: parseFloat(e.target.value)}:null)}/>
                         </div>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Competência</label><input className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.competencia} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {competencia: e.target.value})}/></div>
-                        <div className="grid grid-cols-2 gap-3 pt-4">
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temVariavel: !selectedEmpresa!.temVariavel })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.temVariavel ? 'bg-orange-600 text-white' : 'bg-white/5 text-slate-700'}`}>VARIÁVEL</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { temAdiantamento: !selectedEmpresa!.temAdiantamento })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.temAdiantamento ? 'bg-sky-600 text-white' : 'bg-white/5 text-slate-700'}`}>ADIANTAMENTO</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { piConcluido: !selectedEmpresa!.piConcluido })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.piConcluido ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-700'}`}>PI CONCLUÍDO</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { onety: !selectedEmpresa!.onety })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.onety ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-700'}`}>ONETY</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { procuracao: !selectedEmpresa!.procuracao })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.procuracao ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-700'}`}>PROCURAÇÃO</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { emprestimoConsignado: !selectedEmpresa!.emprestimoConsignado })} className={`py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.emprestimoConsignado ? 'bg-amber-600 text-white' : 'bg-white/5 text-slate-700'}`}>CONSIGNADO</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { convencaoColetiva: !selectedEmpresa!.convencaoColetiva })} className={`col-span-2 py-4 rounded-xl text-[8px] font-black uppercase transition-all ${selectedEmpresa.convencaoColetiva ? 'bg-rose-600 text-white' : 'bg-white/5 text-slate-700'}`}>CONVENÇÃO COLETIVA</button>
+                        {/* FISCAL */}
+                        <div className={`p-4 rounded-2xl border transition-all ${editingEmpresa?.bkoFiscal ? 'bg-orange-600/5 border-orange-500/20' : 'bg-white/[0.02] border-white/5 opacity-40'}`}>
+                           <label className="flex items-center gap-2 mb-3 cursor-pointer"><input type="checkbox" checked={editingEmpresa?.bkoFiscal} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, bkoFiscal: e.target.checked}:null)} className="w-3 h-3 rounded bg-white/5"/><span className="text-[10px] font-black text-white uppercase">FISCAL</span></label>
+                           <input placeholder="Valor" type="number" className="w-full bg-black/20 border border-white/5 p-3 rounded-xl text-[11px] font-black text-white" value={editingEmpresa?.valorFiscal || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, valorFiscal: parseFloat(e.target.value)}:null)}/>
+                        </div>
+                        {/* CONTÁBIL */}
+                        <div className={`p-4 rounded-2xl border transition-all ${editingEmpresa?.bkoContabil ? 'bg-emerald-600/5 border-emerald-500/20' : 'bg-white/[0.02] border-white/5 opacity-40'}`}>
+                           <label className="flex items-center gap-2 mb-3 cursor-pointer"><input type="checkbox" checked={editingEmpresa?.bkoContabil} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, bkoContabil: e.target.checked}:null)} className="w-3 h-3 rounded bg-white/5"/><span className="text-[10px] font-black text-white uppercase">CONTÁBIL</span></label>
+                           <input placeholder="Valor" type="number" className="w-full bg-black/20 border border-white/5 p-3 rounded-xl text-[11px] font-black text-white" value={editingEmpresa?.valorContabil || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, valorContabil: parseFloat(e.target.value)}:null)}/>
                         </div>
                      </div>
 
-                     <div className="space-y-6">
-                        <h4 className="text-emerald-400 text-xs font-black uppercase tracking-widest border-b border-emerald-400/20 pb-4">Setor Fiscal</h4>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Tributação</label><select className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.tributacao} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {tributacao: e.target.value})}>{tributacaoOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}</select></div>
-                        <div className="space-y-3"><label className="text-[10px] text-slate-500 uppercase ml-2">Sistema</label><select className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white font-black" value={selectedEmpresa.sistemaBase} onChange={e=>updateEmpresaDirectly(selectedEmpresa!.id, {sistemaBase: e.target.value})}>{sistemaOptions.map(o => <option key={o} value={o} className="bg-[#0A101D]">{o.toUpperCase()}</option>)}</select></div>
-                     </div>
-
-                     <div className="space-y-6">
-                        <h4 className="text-purple-400 text-xs font-black uppercase tracking-widest border-b border-purple-400/20 pb-4">Acessos & Status</h4>
-                        <div className="flex flex-col gap-4 pt-4">
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { bkoDP: !selectedEmpresa!.bkoDP })} className={`py-6 rounded-2xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoDP ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-slate-800'}`}>Ativo no DP</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { bkoFiscal: !selectedEmpresa!.bkoFiscal })} className={`py-6 rounded-2xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoFiscal ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-800'}`}>Ativo no Fiscal</button>
-                           <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { bkoContabil: !selectedEmpresa!.bkoContabil })} className={`py-6 rounded-2xl text-[10px] font-black uppercase transition-all ${selectedEmpresa.bkoContabil ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-white/5 text-slate-800'}`}>Ativo no Contábil</button>
+                     <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
+                        <div className="space-y-1.5"><label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">Vencimento Padrão</label><input className="w-full bg-[#0F172A] border border-white/10 p-4 rounded-xl text-xs text-indigo-400 font-black outline-none" value={editingEmpresa?.dataVencimento || ''} onChange={e=>setEditingEmpresa(prev=>prev?{...prev, dataVencimento: e.target.value}:null)} placeholder="Ex: Todo dia 10"/></div>
+                        <div className="space-y-1.5">
+                           <label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">Valor Mensalidade (Automático)</label>
+                           <div className="w-full bg-[#0F172A] border border-indigo-500/30 p-4 rounded-xl text-sm font-black text-emerald-400">
+                              R$ {((editingEmpresa?.bkoDP ? (editingEmpresa.valorDP||200) : 0) + (editingEmpresa?.bkoFiscal ? (editingEmpresa.valorFiscal||200) : 0) + (editingEmpresa?.bkoContabil ? (editingEmpresa.valorContabil||200) : 0)).toFixed(2)}
+                           </div>
                         </div>
                      </div>
                   </div>
                </div>
+               <div className="p-6 bg-white/[0.04] border-t border-white/5 flex gap-4">
+                  {visaoAtiva !== 'COBRANCA' && <button onClick={()=>{if(editingEmpresa) archiveEmpresa(editingEmpresa.id); setIsEditModalOpen(false);}} className="flex-1 py-4 bg-red-500/10 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Arquivar</button>}
+                  <button onClick={() => {
+                     // Injetar o valor da calculadora antes de salvar
+                     const totalCalculado = ((editingEmpresa?.bkoDP ? (editingEmpresa.valorDP||200) : 0) + (editingEmpresa?.bkoFiscal ? (editingEmpresa.valorFiscal||200) : 0) + (editingEmpresa?.bkoContabil ? (editingEmpresa.valorContabil||200) : 0));
+                     if(editingEmpresa) {
+                        const payload = {...editingEmpresa, valorMensalidade: totalCalculado};
+                        setEditingEmpresa(payload);
+                        syncEdit(payload);
+                     }
+                  }} className="flex-[2] py-4 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Salvar Alterações</button>
+               </div>
+            </div>
+         </div>
+      )}
 
-               <div className="mt-16 flex gap-8 justify-center border-t border-white/5 pt-16">
-                  {selectedEmpresa.isOnboarding ? (
-                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { isOnboarding: false })} className="px-16 py-8 bg-emerald-600 text-white rounded-full text-sm font-black uppercase shadow-2xl flex items-center gap-6 hover:scale-110 active:scale-95 transition-all"><Rocket size={32}/> GRADUAR PARA CARTEIRA OFICIAL</button>
-                  ) : (
-                     <button onClick={() => updateEmpresaDirectly(selectedEmpresa!.id, { isOnboarding: true })} className="px-16 py-8 bg-orange-600 text-white rounded-full text-sm font-black uppercase shadow-2xl flex items-center gap-6 hover:scale-110 active:scale-95 transition-all"><ArrowRightCircle size={12}/> VOLTAR PARA ONBOARDING</button>
-                  )}
+      {/* Drawer PR Link */}
+      {isPRDrawerOpen && selectedEmpresa && (
+         <div className="fixed inset-y-0 right-0 z-[600] w-[400px] bg-[#0A101D] border-l border-white/10 p-10 shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+            <div className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
+               <h3 className="text-xs font-black text-white uppercase italic tracking-[0.2em] flex items-center gap-2"><Globe size={20} className="text-indigo-500"/> PR ONETY</h3>
+               <button onClick={()=>setIsPRDrawerOpen(false)} className="text-white/20 hover:text-white"><X size={20}/></button>
+            </div>
+            <div className="space-y-8">
+               <div className="bg-white/[0.03] p-6 rounded-2xl border border-white/5">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase mb-1 tracking-widest">Unidade</p>
+                  <p className="text-sm font-black text-white uppercase leading-tight">{selectedEmpresa?.nome}</p>
+               </div>
+               <div className="space-y-4">
+                  <label className="text-[9px] font-black text-white/20 uppercase ml-2 tracking-widest">Link do Projeto</label>
+                  <div className="flex gap-2">
+                     <input className="flex-1 bg-white/5 border border-white/10 p-4 rounded-xl text-xs text-indigo-400 outline-none" value={selectedEmpresa?.link_onetty || ''} onChange={e=>{
+                        if(selectedEmpresa) {
+                           const val = e.target.value;
+                           setSelectedEmpresa({...selectedEmpresa, link_onetty: val});
+                           handleUpdate(selectedEmpresa.id, {link_onetty: val});
+                        }
+                     }}/>
+                     {selectedEmpresa?.link_onetty && <a href={selectedEmpresa.link_onetty} target="_blank" rel="noreferrer" className="bg-indigo-600 w-12 h-12 rounded-xl text-white flex items-center justify-center hover:bg-indigo-500 transition-all shadow-xl"><ExternalLink size={20}/></a>}
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* Modal Novo Processo */}
+      {isNewModalOpen && (
+         <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+            <div className="bg-[#0A101D] border border-white/10 w-full max-w-3xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+               <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between">
+                  <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase">Novo <span className="text-indigo-500">Processo</span></h2>
+                  <button onClick={()=>setIsNewModalOpen(false)} className="p-3 text-slate-500 hover:text-white"><X size={24}/></button>
                </div>
 
-               <div className="flex gap-10 mt-16">
-                  <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-12 bg-white/10 rounded-full text-white font-black uppercase text-xl shadow-2xl flex items-center justify-center gap-6 transition-all hover:bg-white/20 border border-white/10"><CheckCircle2 size={32}/> CONCLUIR EDIÇÃO</button>
-               </div>
+               <form onSubmit={handleManualCreate} className="p-10 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                   <div className="grid grid-cols-2 gap-4">
+                      <input name="nome" placeholder="RAZÃO SOCIAL..." className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-2xl text-xs text-white uppercase outline-none focus:border-indigo-500/50" required/>
+                      <input name="franquia" placeholder="FRANQUIA..." className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-2xl text-xs text-white uppercase outline-none focus:border-indigo-500/50" required/>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <input name="cnpj" placeholder="CNPJ..." className="bg-[#0F172A] border border-white/5 p-4 rounded-2xl text-xs text-white outline-none"/>
+                      <select name="responsavel" className="bg-[#0F172A] border border-white/5 p-4 rounded-2xl text-[10px] text-white font-black uppercase outline-none cursor-pointer" required>
+                         <option value="">ANALISTA...</option>
+                         {[...analistasDP, ...analistasFiscal, ...analistasContabil].sort().map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                   </div>
+                   <div className="grid grid-cols-3 gap-4">
+                      <select name="tributacao" className="bg-[#0F172A] p-4 rounded-2xl text-[10px] text-white font-black uppercase"><option value="">TRIBUTAÇÃO...</option>{['SIMPLES NACIONAL', 'LUCRO PRESUMIDO', 'LUCRO REAL', 'MEI'].map(t => <option key={t} value={t}>{t}</option>)}</select>
+                      <input name="pro_l" placeholder="PRÓ-LABORE" className="bg-[#0F172A] p-4 rounded-2xl text-xs text-white outline-none"/>
+                      <input name="qtd_func" placeholder="FUNCIONÁRIOS" className="bg-[#0F172A] p-4 rounded-2xl text-xs text-white outline-none"/>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <select name="sistema" className="bg-[#0F172A] p-4 rounded-2xl text-[10px] text-white font-black uppercase"><option value="">SISTEMA...</option>{['ALTERDATA', 'ALTERDATA SERVIDOR', 'DOMÍNIO BASE 1', 'DOMÍNIO BASE 2', 'DOMÍNIO BASE 3'].map(s => <option key={s} value={s}>{s}</option>)}</select>
+                      <input name="competencia" placeholder={`COMP: ${getCurrentCompetence()}`} className="bg-[#0F172A] p-4 rounded-2xl text-xs text-indigo-400 font-bold outline-none uppercase text-center"/>
+                   </div>
+                   <div className="pt-8 flex gap-4">
+                      <button type="button" onClick={()=>setIsNewModalOpen(false)} className="flex-1 py-5 rounded-3xl text-[10px] font-black text-slate-500 uppercase">Cancelar</button>
+                      <button type="submit" className="flex-[2] py-5 bg-indigo-600 text-white font-black rounded-3xl text-[10px] uppercase shadow-2xl">+ Confirmar Cadastro</button>
+                   </div>
+               </form>
             </div>
          </div>
       )}
